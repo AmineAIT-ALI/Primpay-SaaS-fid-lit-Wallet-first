@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Primpay — Workflow n8n-style</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #1e1f24;
+    color: #e8e8e8;
+    padding: 40px 20px 80px;
+    min-height: 100vh;
+  }
+  h1 {
+    text-align: center;
+    font-size: 26px;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #9b9da3;
+    margin-bottom: 32px;
+    font-size: 14px;
+  }
+  .tabs {
+    max-width: 1500px;
+    margin: 0 auto 24px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .tabs button {
+    background: #2a2c33;
+    color: #b8bac0;
+    border: 1px solid #3a3c44;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .tabs button:hover { background: #34363e; color: #fff; }
+  .tabs button.active {
+    background: #ff6d4a;
+    border-color: #ff6d4a;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(255,109,74,0.3);
+  }
+
+  .workflow-container {
+    max-width: 1500px;
+    margin: 0 auto;
+    background: #25272e;
+    border-radius: 16px;
+    padding: 40px 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    position: relative;
+    min-height: 500px;
+  }
+
+  .workflow-title {
+    text-align: center;
+    font-size: 18px;
+    color: #fff;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .workflow-desc {
+    text-align: center;
+    color: #9b9da3;
+    font-size: 13px;
+    margin-bottom: 32px;
+  }
+
+  /* ---------- ROW ---------- */
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 480px 1fr;
+    gap: 24px;
+    align-items: center;
+    margin-bottom: 8px;
+    min-height: 120px;
+  }
+  .row.has-panel-left { grid-template-columns: 1fr 480px 1fr; }
+
+  /* ---------- NODE (central) ---------- */
+  .node-wrapper {
+    display: flex;
+    justify-content: center;
+    position: relative;
+  }
+  .node {
+    background: #2f3139;
+    border: 2px solid #3a3c44;
+    border-radius: 12px;
+    padding: 16px 20px;
+    min-width: 380px;
+    max-width: 460px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    position: relative;
+    transition: all 0.2s;
+  }
+  .node:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  }
+  .node-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .node-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .node-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+  }
+  .node-sub {
+    font-size: 11px;
+    color: #9b9da3;
+    margin-top: 2px;
+  }
+  .node-body {
+    font-size: 12.5px;
+    color: #c8cad0;
+    line-height: 1.5;
+    margin-top: 6px;
+  }
+  .node-body code {
+    background: #1a1c21;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 11.5px;
+    color: #ffa07a;
+  }
+
+  /* Couleurs par type de nœud */
+  .node.client { border-color: #e07856; }
+  .node.client .node-icon { background: rgba(224,120,86,0.15); }
+  .node.trigger { border-color: #56b870; }
+  .node.trigger .node-icon { background: rgba(86,184,112,0.15); }
+  .node.api { border-color: #4a6fa5; }
+  .node.api .node-icon { background: rgba(74,111,165,0.15); }
+  .node.core { border-color: #d97706; border-width: 3px; }
+  .node.core .node-icon { background: rgba(217,119,6,0.2); }
+  .node.core .node-title { color: #ffb370; }
+  .node.db { border-color: #6b8e6b; }
+  .node.db .node-icon { background: rgba(107,142,107,0.15); }
+  .node.external { border-color: #8a4b8a; }
+  .node.external .node-icon { background: rgba(138,75,138,0.15); }
+  .node.response { border-color: #56b870; }
+  .node.response .node-icon { background: rgba(86,184,112,0.15); }
+
+  /* ---------- PANELS (gauche et droite) ---------- */
+  .panel {
+    background: #2a2c33;
+    border-left: 3px solid #3a3c44;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #b8bac0;
+  }
+  .panel.left { border-left: none; border-right: 3px solid #3a3c44; text-align: right; }
+  .panel-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #ff6d4a;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .panel-content {
+    color: #d0d2d8;
+    line-height: 1.55;
+  }
+  .panel-content ul {
+    list-style: none;
+    padding: 0;
+  }
+  .panel-content li {
+    padding: 3px 0;
+    font-size: 11.5px;
+  }
+  .panel-content li::before {
+    content: "▸ ";
+    color: #ff6d4a;
+    font-weight: bold;
+  }
+  .panel.left .panel-content li::before { content: ""; }
+  .panel.left .panel-content li::after {
+    content: " ◂";
+    color: #ff6d4a;
+    font-weight: bold;
+  }
+  .panel-content code {
+    background: #1a1c21;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 10.5px;
+    color: #ffa07a;
+  }
+  .panel.data { border-color: #6b8e6b; }
+  .panel.data .panel-label { color: #8fc28f; }
+  .panel.data .panel-content li::before, .panel.data .panel-content li::after { color: #8fc28f; }
+  .panel.warning { border-color: #d97706; }
+  .panel.warning .panel-label { color: #ffb370; }
+  .panel.info { border-color: #4a6fa5; }
+  .panel.info .panel-label { color: #7a9fd5; }
+  .panel.info .panel-content li::before, .panel.info .panel-content li::after { color: #7a9fd5; }
+
+  /* ---------- CONNECTOR (flèche verticale entre nœuds) ---------- */
+  .connector {
+    height: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .connector-line {
+    width: 3px;
+    height: 100%;
+    background: #4a6fa5;
+    border-radius: 2px;
+    position: relative;
+  }
+  .connector-line::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 10px solid #4a6fa5;
+  }
+  .connector-label {
+    position: absolute;
+    background: #25272e;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    color: #7a9fd5;
+    border: 1px solid #4a6fa5;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  /* Connector colors by type */
+  .connector.async .connector-line { background: #8a4b8a; background-image: linear-gradient(180deg, #8a4b8a 50%, transparent 50%); background-size: 100% 10px; }
+  .connector.async .connector-line::after { border-top-color: #8a4b8a; }
+  .connector.async .connector-label { color: #c28fc2; border-color: #8a4b8a; }
+
+  .connector.success .connector-line { background: #56b870; }
+  .connector.success .connector-line::after { border-top-color: #56b870; }
+  .connector.success .connector-label { color: #8fc28f; border-color: #56b870; }
+
+  .connector.external .connector-line { background: #d97706; }
+  .connector.external .connector-line::after { border-top-color: #d97706; }
+  .connector.external .connector-label { color: #ffb370; border-color: #d97706; }
+
+  /* ---------- BADGE numéro d'étape ---------- */
+  .step-badge {
+    position: absolute;
+    top: -12px;
+    left: -12px;
+    background: #ff6d4a;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 4px 8px rgba(255,109,74,0.4);
+    z-index: 2;
+  }
+
+  .workflow { display: none; }
+  .workflow.active { display: block; }
+
+  .legend {
+    max-width: 1500px;
+    margin: 0 auto 24px;
+    background: #2a2c33;
+    padding: 14px 20px;
+    border-radius: 10px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: 12px;
+    color: #b8bac0;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot {
+    width: 14px; height: 14px; border-radius: 4px;
+    border: 2px solid;
+  }
+
+  .branch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin: 8px 0;
+  }
+  .branch-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .branch-label {
+    background: #34363e;
+    color: #ff6d4a;
+    padding: 6px 14px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    border: 1px solid #ff6d4a;
+  }
+</style>
+</head>
+<body>
+
+<h1>Primpay — Workflows (vue n8n)</h1>
+<p class="subtitle">Chaque workflow est une chaîne verticale. À gauche : le contexte. Au centre : les nœuds du flux. À droite : les données/payloads.</p>
+
+<div class="tabs">
+  <button class="tab-btn active" data-wf="onboarding">① Client ajoute sa carte</button>
+  <button class="tab-btn" data-wf="credit">② Staff crédite un passage</button>
+  <button class="tab-btn" data-wf="redeem">③ Reward consommée</button>
+  <button class="tab-btn" data-wf="signature">④ Commerçant signe</button>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="border-color:#e07856"></span>Client final</div>
+  <div class="legend-item"><span class="legend-dot" style="border-color:#56b870"></span>Déclencheur / réponse</div>
+  <div class="legend-item"><span class="legend-dot" style="border-color:#4a6fa5"></span>API Backend</div>
+  <div class="legend-item"><span class="legend-dot" style="border-color:#d97706"></span>Cœur métier (Loyalty)</div>
+  <div class="legend-item"><span class="legend-dot" style="border-color:#6b8e6b"></span>Base de données / cache</div>
+  <div class="legend-item"><span class="legend-dot" style="border-color:#8a4b8a"></span>Service externe</div>
+</div>
+
+<!-- ============================================================
+     WORKFLOW 1 — ONBOARDING CLIENT
+     ============================================================ -->
+<div class="workflow active" data-wf="onboarding">
+  <div class="workflow-container">
+    <div class="workflow-title">Workflow ① — Client ajoute sa carte fidélité</div>
+    <div class="workflow-desc">De "sticker QR aperçu sur le comptoir" à "pass installé dans le Wallet"</div>
+
+    <!-- Nœud 1 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Contexte</div>
+        <div class="panel-content">
+          <ul>
+            <li>Marc mange sa pizza</li>
+            <li>Voit un sticker "Ajoutez votre carte fidélité"</li>
+            <li>Sticker généré par nous, posé à l'install</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node client">
+          <div class="step-badge">1</div>
+          <div class="node-head">
+            <div class="node-icon">📱</div>
+            <div>
+              <div class="node-title">Client scanne le QR public</div>
+              <div class="node-sub">Déclencheur humain · appareil photo natif</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Le sticker contient une URL signée :
+            <code>primpay.io/m/pizzeria-ali?s=sig</code>
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Sortie</div>
+        <div class="panel-content">
+          <ul>
+            <li>URL ouverte dans le navigateur</li>
+            <li>Paramètre <code>merchant_slug</code> transmis</li>
+            <li>Signature HMAC vérifiée côté serveur</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">navigation HTTPS</div></div>
+
+    <!-- Nœud 2 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Techno</div>
+        <div class="panel-content">
+          <ul>
+            <li>Next.js statique (SSG)</li>
+            <li>Servi via Cloudflare</li>
+            <li>Pas de JS lourd, charge en &lt; 1 s</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node trigger">
+          <div class="step-badge">2</div>
+          <div class="node-head">
+            <div class="node-icon">🌐</div>
+            <div>
+              <div class="node-title">Page d'ajout publique</div>
+              <div class="node-sub">primpay.io/m/pizzeria-ali</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Page dédiée au merchant. Affiche son logo, son programme, un formulaire en 2 champs.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Demandé au client</div>
+        <div class="panel-content">
+          <ul>
+            <li><code>first_name</code> (texte)</li>
+            <li><code>phone</code> (FR validé)</li>
+            <li>Case consentement RGPD cochée</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">POST /customers</div></div>
+
+    <!-- Nœud 3 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Règles serveur</div>
+        <div class="panel-content">
+          <ul>
+            <li>Vérifie signature du slug</li>
+            <li>Si <code>phone</code> existe déjà → réutilise le customer</li>
+            <li>Sinon → crée nouveau customer</li>
+            <li>Crée <code>loyalty_account</code> lié au merchant</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node api">
+          <div class="step-badge">3</div>
+          <div class="node-head">
+            <div class="node-icon">⚙️</div>
+            <div>
+              <div class="node-title">Module CUSTOMERS</div>
+              <div class="node-sub">POST /customers · NestJS</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Crée l'identité globale ou retrouve l'existante. Crée un <code>loyalty_account</code> si premier contact avec ce merchant.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Écrit en DB</div>
+        <div class="panel-content">
+          <ul>
+            <li><code>customers</code> (si nouveau)</li>
+            <li><code>loyalty_accounts</code> (toujours)</li>
+            <li><code>loyalty_events</code> type <code>onboarding</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">customer créé → generate pass</div></div>
+
+    <!-- Nœud 4 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Détection device</div>
+        <div class="panel-content">
+          <ul>
+            <li>User-Agent iOS → Apple</li>
+            <li>User-Agent Android → Google</li>
+            <li>Desktop → QR à scanner avec mobile</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node api">
+          <div class="step-badge">4</div>
+          <div class="node-head">
+            <div class="node-icon">🎟️</div>
+            <div>
+              <div class="node-title">Module WALLET MGR</div>
+              <div class="node-sub">Génère le pass · Apple PassKit + Google API</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Génère le <code>qr_payload</code> + <code>qr_signature</code> HMAC, construit le pass (.pkpass ou JWT), l'envoie au client.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Contenu du pass</div>
+        <div class="panel-content">
+          <ul>
+            <li>Logo merchant</li>
+            <li>Prénom + <code>public_id</code> (ex. AMIN-1423)</li>
+            <li>Progression "0 / 10 tampons"</li>
+            <li>QR fixe signé (payload + HMAC)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector external"><div class="connector-line"></div><div class="connector-label">Apple PassKit API ou Google Wallet API</div></div>
+
+    <!-- Nœud 5 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Infra externe</div>
+        <div class="panel-content">
+          <ul>
+            <li>Apple : compte dev 99$/an</li>
+            <li>Google : gratuit</li>
+            <li>Latence 300-800 ms</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node external">
+          <div class="step-badge">5</div>
+          <div class="node-head">
+            <div class="node-icon">🍎🤖</div>
+            <div>
+              <div class="node-title">Apple / Google Wallet</div>
+              <div class="node-sub">Services tiers · génération du pass natif</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Valide la signature, renvoie le fichier <code>.pkpass</code> (iOS) ou un <code>JWT</code> "Save to Google Wallet" (Android).
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Retour</div>
+        <div class="panel-content">
+          <ul>
+            <li>iOS : fichier binaire <code>.pkpass</code></li>
+            <li>Android : URL <code>save?jwt=...</code></li>
+            <li>Taille ~50 ko</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">pass renvoyé au téléphone</div></div>
+
+    <!-- Nœud 6 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">UX finale</div>
+        <div class="panel-content">
+          <ul>
+            <li>Bouton "Ajouter à Apple Wallet"</li>
+            <li>ou "Enregistrer sur Google Wallet"</li>
+            <li>Clic → pass s'installe</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node response">
+          <div class="step-badge">6</div>
+          <div class="node-head">
+            <div class="node-icon">✅</div>
+            <div>
+              <div class="node-title">Pass installé dans le Wallet</div>
+              <div class="node-sub">Fin du flux · temps total &lt; 30 s</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Le client voit sa carte dans son Wallet. À la prochaine visite, il la présentera au staff. Un email de bienvenue est optionnel (post-MVP).
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">État après</div>
+        <div class="panel-content">
+          <ul>
+            <li><code>wallet_passes.status = active</code></li>
+            <li>Compte prêt à être crédité</li>
+            <li>Le merchant apparaît "Nouveau client inscrit" dans son dashboard</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     WORKFLOW 2 — CRÉDIT
+     ============================================================ -->
+<div class="workflow" data-wf="credit">
+  <div class="workflow-container">
+    <div class="workflow-title">Workflow ② — Staff crédite un passage</div>
+    <div class="workflow-desc">Du geste staff au pass mis à jour dans le Wallet du client (objectif &lt; 2 secondes)</div>
+
+    <!-- Nœud 1 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">3 chemins possibles</div>
+        <div class="panel-content">
+          <ul>
+            <li>SCAN du QR du pass</li>
+            <li>RECHERCHE prénom/téléphone</li>
+            <li>DERNIERS CLIENTS (clic direct)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node client">
+          <div class="step-badge">1</div>
+          <div class="node-head">
+            <div class="node-icon">👨‍🍳</div>
+            <div>
+              <div class="node-title">Staff identifie le client</div>
+              <div class="node-sub">PWA ouverte sur téléphone/tablette</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Ali sélectionne le client via l'un des 3 chemins. La PWA dispose toujours du JWT staff en mémoire (stocké après login).
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Données côté PWA</div>
+        <div class="panel-content">
+          <ul>
+            <li><code>customer_id</code> identifié</li>
+            <li><code>merchant_id</code> depuis JWT</li>
+            <li><code>staff_user_id</code> depuis JWT</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">tap sur bouton "+1"</div></div>
+
+    <!-- Nœud 2 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Headers</div>
+        <div class="panel-content">
+          <ul>
+            <li><code>Authorization: Bearer &lt;jwt&gt;</code></li>
+            <li><code>Idempotency-Key: uuid</code></li>
+            <li><code>Content-Type: application/json</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node api">
+          <div class="step-badge">2</div>
+          <div class="node-head">
+            <div class="node-icon">🚪</div>
+            <div>
+              <div class="node-title">POST /loyalty/credit</div>
+              <div class="node-sub">API Gateway · Nginx + middleware NestJS</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Vérifie JWT, extrait <code>merchant_id</code>, applique rate-limit, passe la requête au Loyalty Engine.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Payload</div>
+        <div class="panel-content">
+          <ul>
+            <li><code>customer_id</code></li>
+            <li><code>source: "qr_scan"</code></li>
+            <li><code>points_delta: 0</code></li>
+            <li><code>stamps_delta: 1</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">route vers Loyalty Engine</div></div>
+
+    <!-- Nœud 3 -->
+    <div class="row">
+      <div class="panel left warning">
+        <div class="panel-label">Règles métier critiques</div>
+        <div class="panel-content">
+          <ul>
+            <li>Cooldown &lt; 10 min → REJETÉ</li>
+            <li>Limite jour atteinte → REJETÉ</li>
+            <li>QR révoqué → REJETÉ</li>
+            <li>Programme inactif → REJETÉ</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node core">
+          <div class="step-badge">3</div>
+          <div class="node-head">
+            <div class="node-icon">⭐</div>
+            <div>
+              <div class="node-title">LOYALTY ENGINE (cœur)</div>
+              <div class="node-sub">Valide toutes les règles métier</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Récupère le programme actif, vérifie cooldown (Redis), limite jour (Redis), calcule le nouveau solde, détecte si un seuil est atteint.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Lectures</div>
+        <div class="panel-content">
+          <ul>
+            <li>Postgres : <code>loyalty_programs</code></li>
+            <li>Postgres : <code>loyalty_accounts</code> (balance)</li>
+            <li>Redis : <code>cooldown:{m}:{c}</code></li>
+            <li>Redis : <code>daily:{c}:{date}</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector success"><div class="connector-line"></div><div class="connector-label">règles OK → écrit en DB</div></div>
+
+    <!-- Nœud 4 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Append-only</div>
+        <div class="panel-content">
+          <ul>
+            <li>Jamais de DELETE</li>
+            <li>Jamais d'UPDATE d'event</li>
+            <li>Annulation = event compensatoire</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node db">
+          <div class="step-badge">4</div>
+          <div class="node-head">
+            <div class="node-icon">🗄️</div>
+            <div>
+              <div class="node-title">PostgreSQL — transaction</div>
+              <div class="node-sub">INSERT event + UPDATE balance atomique</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Transaction : insère <code>loyalty_events</code> + met à jour <code>loyalty_accounts.stamps_balance</code> + crée une <code>reward</code> si seuil atteint.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Écrit</div>
+        <div class="panel-content">
+          <ul>
+            <li><code>loyalty_events</code> +1 row</li>
+            <li><code>loyalty_accounts.stamps_balance +1</code></li>
+            <li><code>rewards</code> +1 si seuil atteint</li>
+            <li>Redis : set cooldown TTL</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">demande update pass</div></div>
+
+    <!-- Nœud 5 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Contenu à mettre à jour</div>
+        <div class="panel-content">
+          <ul>
+            <li>Nouveau solde "7 / 10"</li>
+            <li>Progression visuelle</li>
+            <li>Badge "Récompense dispo" si applicable</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node api">
+          <div class="step-badge">5</div>
+          <div class="node-head">
+            <div class="node-icon">🎟️</div>
+            <div>
+              <div class="node-title">WALLET MGR — update pass</div>
+              <div class="node-sub">Prépare le payload pour Apple/Google</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Prépare la nouvelle version du pass, signe à nouveau, pousse vers Apple PassKit / Google Wallet.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Appel externe</div>
+        <div class="panel-content">
+          <ul>
+            <li>Apple : <code>POST /v1/devices/../passes</code></li>
+            <li>Google : <code>PATCH loyalty/object/...</code></li>
+            <li>Async, sans bloquer la réponse staff</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector success"><div class="connector-line"></div><div class="connector-label">réponse immédiate au staff</div></div>
+
+    <!-- Nœud 6 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">UX staff</div>
+        <div class="panel-content">
+          <ul>
+            <li>Animation verte</li>
+            <li>Chiffre qui défile 6 → 7</li>
+            <li>Vibration légère</li>
+            <li>Moins de 2 secondes total</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node response">
+          <div class="step-badge">6</div>
+          <div class="node-head">
+            <div class="node-icon">✅</div>
+            <div>
+              <div class="node-title">PWA affiche la confirmation</div>
+              <div class="node-sub">Retour à l'écran "Derniers clients"</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Staff rend la main. Marc verra son pass mis à jour dans ~2-5 s via push Wallet (asynchrone, géré par Apple/Google).
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Réponse JSON</div>
+        <div class="panel-content">
+          <ul>
+            <li><code>event_id</code></li>
+            <li><code>new_balance: {stamps: 7}</code></li>
+            <li><code>progress: {current: 7, threshold: 10}</code></li>
+            <li><code>reward_available: false</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector async"><div class="connector-line"></div><div class="connector-label">push asynchrone vers Wallet client (Apple/Google)</div></div>
+
+    <!-- Nœud 7 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Latence push</div>
+        <div class="panel-content">
+          <ul>
+            <li>Apple APNs : 1-10 s</li>
+            <li>Google FCM : 1-5 s</li>
+            <li>Dépend du réseau du client</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node external">
+          <div class="step-badge">7</div>
+          <div class="node-head">
+            <div class="node-icon">📲</div>
+            <div>
+              <div class="node-title">Pass mis à jour chez le client</div>
+              <div class="node-sub">Apple Wallet / Google Wallet</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Le pass du client affiche le nouveau solde la prochaine fois qu'il l'ouvre (ou immédiatement si notifications Wallet actives).
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">État final</div>
+        <div class="panel-content">
+          <ul>
+            <li>Marc voit "7 / 10"</li>
+            <li>Event historique tracé</li>
+            <li>Ali peut passer au client suivant</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     WORKFLOW 3 — REDEEM
+     ============================================================ -->
+<div class="workflow" data-wf="redeem">
+  <div class="workflow-container">
+    <div class="workflow-title">Workflow ③ — Consommation d'une récompense</div>
+    <div class="workflow-desc">Le client a atteint le seuil. Le staff utilise la reward. Lock transactionnel pour éviter double consommation.</div>
+
+    <!-- Nœud 1 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Déclencheur</div>
+        <div class="panel-content">
+          <ul>
+            <li>Le client a 10/10 tampons</li>
+            <li>Reward déjà créée auto (flow précédent)</li>
+            <li>Status <code>available</code> en DB</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node client">
+          <div class="step-badge">1</div>
+          <div class="node-head">
+            <div class="node-icon">🎁</div>
+            <div>
+              <div class="node-title">Badge "Reward disponible" affiché</div>
+              <div class="node-sub">Fiche client dans la PWA staff</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Le staff voit un badge coloré. Il confirme avec le client que c'est bien la pizza offerte aujourd'hui.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Données affichées</div>
+        <div class="panel-content">
+          <ul>
+            <li>Libellé reward (ex. "1 pizza offerte")</li>
+            <li>Date d'obtention</li>
+            <li>Date d'expiration éventuelle</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">staff clique "Utiliser la récompense"</div></div>
+
+    <!-- Nœud 2 -->
+    <div class="row">
+      <div class="panel left warning">
+        <div class="panel-label">UX sécurisante</div>
+        <div class="panel-content">
+          <ul>
+            <li>Modal obligatoire</li>
+            <li>"Offrir 1 pizza ?" OUI / NON</li>
+            <li>Évite les faux-clics</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node response">
+          <div class="step-badge">2</div>
+          <div class="node-head">
+            <div class="node-icon">❓</div>
+            <div>
+              <div class="node-title">Confirmation modale</div>
+              <div class="node-sub">PWA demande validation avant requête</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Au clic OUI, la PWA envoie la requête. Un <code>Idempotency-Key</code> est généré côté client pour éviter les doubles envois.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Sortie</div>
+        <div class="panel-content">
+          <ul>
+            <li>POST <code>/rewards/:id/redeem</code></li>
+            <li>Idempotency-Key générée</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">POST /rewards/:id/redeem</div></div>
+
+    <!-- Nœud 3 -->
+    <div class="row">
+      <div class="panel left warning">
+        <div class="panel-label">Risque à contrer</div>
+        <div class="panel-content">
+          <ul>
+            <li>Double-clic staff</li>
+            <li>Double tentative réseau</li>
+            <li>2 staffs qui cliquent en même temps</li>
+            <li>Bug réseau partiel</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node core">
+          <div class="step-badge">3</div>
+          <div class="node-head">
+            <div class="node-icon">🔒</div>
+            <div>
+              <div class="node-title">LOCK transactionnel</div>
+              <div class="node-sub">Redis SETNX + Postgres SELECT FOR UPDATE</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Acquiert un lock <code>lock:reward:{id}</code> sur Redis (5 s de TTL). Ouvre une transaction SQL avec <code>SELECT ... FOR UPDATE</code> sur la reward.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Si lock échoue</div>
+        <div class="panel-content">
+          <ul>
+            <li>Retourne <code>423 Locked</code></li>
+            <li>PWA affiche "en cours de traitement"</li>
+            <li>Staff ne peut pas double-clic</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector success"><div class="connector-line"></div><div class="connector-label">lock obtenu</div></div>
+
+    <!-- Nœud 4 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Vérifications</div>
+        <div class="panel-content">
+          <ul>
+            <li>Reward toujours <code>available</code> ?</li>
+            <li>Non expirée ?</li>
+            <li>Toujours rattachée au bon merchant ?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node db">
+          <div class="step-badge">4</div>
+          <div class="node-head">
+            <div class="node-icon">✍️</div>
+            <div>
+              <div class="node-title">PostgreSQL — COMMIT transaction</div>
+              <div class="node-sub">Change status + écrit event</div>
+            </div>
+          </div>
+          <div class="node-body">
+            <code>UPDATE rewards SET status='redeemed', redeemed_at=NOW()</code> + INSERT dans <code>loyalty_events</code> avec source <code>reward_redeem</code>.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Résultat</div>
+        <div class="panel-content">
+          <ul>
+            <li>Reward consommée (irréversible)</li>
+            <li>Event tracé</li>
+            <li>Lock libéré</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">update pass Wallet (cycle recommence)</div></div>
+
+    <!-- Nœud 5 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Cycle de fidélité</div>
+        <div class="panel-content">
+          <ul>
+            <li>Compteur tampons remis à zéro</li>
+            <li>(ou au reliquat, selon règle)</li>
+            <li>Pass affiche "0 / 10"</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node api">
+          <div class="step-badge">5</div>
+          <div class="node-head">
+            <div class="node-icon">🎟️</div>
+            <div>
+              <div class="node-title">WALLET MGR — actualise le pass</div>
+              <div class="node-sub">Même mécanique que workflow ②</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Le pass du client affiche le nouveau compteur. Il peut recommencer à accumuler. Le libellé "Récompense dispo" disparaît.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Push externe</div>
+        <div class="panel-content">
+          <ul>
+            <li>Apple APNs ou Google FCM</li>
+            <li>Async</li>
+            <li>Latence 1-10 s</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector success"><div class="connector-line"></div><div class="connector-label">réponse staff immédiate</div></div>
+
+    <!-- Nœud 6 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Feedback UX</div>
+        <div class="panel-content">
+          <ul>
+            <li>Animation confetti légère</li>
+            <li>Message "Offert !"</li>
+            <li>Ligne "reward consommée" dans historique</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node response">
+          <div class="step-badge">6</div>
+          <div class="node-head">
+            <div class="node-icon">🎉</div>
+            <div>
+              <div class="node-title">Fin — reward consommée</div>
+              <div class="node-sub">Cycle de fidélité redémarre</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Le merchant a servi sa récompense. Le client repart content. L'événement est tracé, comptabilisé dans les analytics du merchant (rewards consommées).
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Impact analytics</div>
+        <div class="panel-content">
+          <ul>
+            <li>"rewards_redeemed_30d +1"</li>
+            <li>Trackable dans dashboard owner</li>
+            <li>Indicateur de satisfaction</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     WORKFLOW 4 — SIGNATURE COMMERÇANT
+     ============================================================ -->
+<div class="workflow" data-wf="signature">
+  <div class="workflow-container">
+    <div class="workflow-title">Workflow ④ — Signature + onboarding d'un commerçant</div>
+    <div class="workflow-desc">De la démo terrain au commerçant pleinement opérationnel</div>
+
+    <!-- Nœud 1 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Contexte</div>
+        <div class="panel-content">
+          <ul>
+            <li>Vito en démo chez Ali</li>
+            <li>Script terrain appliqué</li>
+            <li>Objections traitées</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node client">
+          <div class="step-badge">1</div>
+          <div class="node-head">
+            <div class="node-icon">🤝</div>
+            <div>
+              <div class="node-title">Accord verbal du commerçant</div>
+              <div class="node-sub">Face-à-face · < 3 minutes de démo</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Ali dit "ok on essaie". Vito sort la tablette et démarre l'inscription en direct. Setup offerte si signature sous 48 h.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Levier commercial</div>
+        <div class="panel-content">
+          <ul>
+            <li>Essai 14 jours sans CB</li>
+            <li>Setup offerte (sinon 99 €)</li>
+            <li>Sans engagement</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector success"><div class="connector-line"></div><div class="connector-label">Vito remplit le formulaire d'inscription</div></div>
+
+    <!-- Nœud 2 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Infos collectées</div>
+        <div class="panel-content">
+          <ul>
+            <li>Email owner</li>
+            <li>Mot de passe</li>
+            <li>Nom commerce</li>
+            <li>Adresse</li>
+            <li>Plan (Solo 29 € ou Multi 79 €)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node api">
+          <div class="step-badge">2</div>
+          <div class="node-head">
+            <div class="node-icon">📝</div>
+            <div>
+              <div class="node-title">Création du compte merchant</div>
+              <div class="node-sub">POST /merchants + POST /staff_users (owner)</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Crée <code>merchants</code>, <code>merchant_locations</code> (1 par défaut), <code>staff_users</code> (rôle owner), <code>subscriptions</code> en statut <code>trialing</code>.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Écrit en DB</div>
+        <div class="panel-content">
+          <ul>
+            <li><code>merchants</code> → status trial</li>
+            <li><code>staff_users</code> → owner actif</li>
+            <li><code>subscriptions</code> → trial 14 j</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">paramétrage du programme</div></div>
+
+    <!-- Nœud 3 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">À choisir avec le gérant</div>
+        <div class="panel-content">
+          <ul>
+            <li>Points ou tampons ?</li>
+            <li>Seuil (ex. 10)</li>
+            <li>Libellé récompense</li>
+            <li>Cooldown (défaut 10 min)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node api">
+          <div class="step-badge">3</div>
+          <div class="node-head">
+            <div class="node-icon">⚙️</div>
+            <div>
+              <div class="node-title">Configuration du programme</div>
+              <div class="node-sub">POST /merchant/programs</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Insère un <code>loyalty_program</code> actif. Calcule les règles en JSON. Prêt à accueillir les premiers crédits.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">JSON règles</div>
+        <div class="panel-content">
+          <ul>
+            <li><code>type: "stamps"</code></li>
+            <li><code>rules: {"ratio": 1}</code></li>
+            <li><code>reward_policy: {threshold: 10, value: "1 pizza"}</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">création du QR public + génération du pack</div></div>
+
+    <!-- Nœud 4 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Assets générés</div>
+        <div class="panel-content">
+          <ul>
+            <li>QR public signé pour le merchant</li>
+            <li>PDF sticker prêt à imprimer</li>
+            <li>PDF chevalet</li>
+            <li>URL publique <code>primpay.io/m/pizzeria-ali</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node api">
+          <div class="step-badge">4</div>
+          <div class="node-head">
+            <div class="node-icon">🏷️</div>
+            <div>
+              <div class="node-title">Génération du QR public + pack signalétique</div>
+              <div class="node-sub">Backend + job d'impression</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Crée l'URL signée, génère un PDF imprimable immédiat pour tests. Commande du pack physique auto-déclenchée (expédition sous 3 jours).
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Assets numériques</div>
+        <div class="panel-content">
+          <ul>
+            <li>Stockés dans S3</li>
+            <li>Accessibles depuis dashboard</li>
+            <li>Re-téléchargeables à volonté</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">invitations staff</div></div>
+
+    <!-- Nœud 5 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Staff ajouté</div>
+        <div class="panel-content">
+          <ul>
+            <li>1 à 3 emails saisis</li>
+            <li>Rôle staff par défaut</li>
+            <li>Email d'invitation envoyé</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node external">
+          <div class="step-badge">5</div>
+          <div class="node-head">
+            <div class="node-icon">✉️</div>
+            <div>
+              <div class="node-title">Envoi emails d'invitation</div>
+              <div class="node-sub">Resend · email transactionnel</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Chaque staff reçoit un lien magique pour créer son mot de passe et installer la PWA. Validité 7 jours.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Contenu email</div>
+        <div class="panel-content">
+          <ul>
+            <li>Sujet "Bienvenue sur Primpay"</li>
+            <li>Lien magique d'activation</li>
+            <li>Guide installation PWA</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector"><div class="connector-line"></div><div class="connector-label">test en direct avec Vito</div></div>
+
+    <!-- Nœud 6 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Check-list test</div>
+        <div class="panel-content">
+          <ul>
+            <li>QR public scanne correctement</li>
+            <li>Ajout Wallet fonctionne (iOS et Android)</li>
+            <li>Staff peut scanner un pass</li>
+            <li>Crédit s'enregistre</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node response">
+          <div class="step-badge">6</div>
+          <div class="node-head">
+            <div class="node-icon">🧪</div>
+            <div>
+              <div class="node-title">Test en direct sur place</div>
+              <div class="node-sub">Vito simule un client réel</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Vito scanne le QR public, ajoute une carte de démo, l'envoie chez lui. Ali passe côté staff et crédite. Validation des 2 chemins.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Si test OK</div>
+        <div class="panel-content">
+          <ul>
+            <li>Pack signalétique posé au comptoir</li>
+            <li>Briefing staff 5 min</li>
+            <li>Vito quitte</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="connector async"><div class="connector-line"></div><div class="connector-label">suivi automatisé (asynchrone)</div></div>
+
+    <!-- Nœud 7 -->
+    <div class="row">
+      <div class="panel left info">
+        <div class="panel-label">Communications auto</div>
+        <div class="panel-content">
+          <ul>
+            <li>J+3 : relance si 0 client créé</li>
+            <li>J+7 : bilan + tips</li>
+            <li>J+12 : "Plus que 2 jours"</li>
+            <li>J+14 : ajout CB ou archivage</li>
+          </ul>
+        </div>
+      </div>
+      <div class="node-wrapper">
+        <div class="node external">
+          <div class="step-badge">7</div>
+          <div class="node-head">
+            <div class="node-icon">📬</div>
+            <div>
+              <div class="node-title">Séquence de suivi essai 14 j</div>
+              <div class="node-sub">Emails automatiques + monitoring usage</div>
+            </div>
+          </div>
+          <div class="node-body">
+            Emails séquencés. Si à J+3 aucun customer créé, alerte interne pour que Vito appelle. Objectif : convertir en payant à J+14.
+          </div>
+        </div>
+      </div>
+      <div class="panel data">
+        <div class="panel-label">Résultat à J+14</div>
+        <div class="panel-content">
+          <ul>
+            <li>CB ajoutée → Solo actif</li>
+            <li>ou Pilote → 2 mois gratuits</li>
+            <li>ou archivage 30 j + purge</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const tabs = document.querySelectorAll('.tab-btn');
+const workflows = document.querySelectorAll('.workflow');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    workflows.forEach(w => w.classList.remove('active'));
+    document.querySelector(`.workflow[data-wf="${tab.dataset.wf}"]`).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+</script>
+
+</body>
+</html>

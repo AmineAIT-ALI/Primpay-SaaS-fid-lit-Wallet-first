@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Primpay — Schéma système (flux clairs)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f7f5f0;
+    color: #1e1e1e;
+    padding: 24px 16px 60px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 26px;
+    margin-bottom: 4px;
+    color: #1e1e1e;
+  }
+  .subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+
+  .controls {
+    max-width: 1700px;
+    margin: 0 auto 20px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .controls button {
+    background: #fff;
+    border: 1.5px solid #d0ccc0;
+    color: #1e1e1e;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .controls button:hover { background: #f0ebe0; border-color: #b8a978; }
+  .controls button.active { background: #1e1e1e; color: #fff; border-color: #1e1e1e; }
+  .controls .label { font-size: 13px; color: #666; font-weight: 500; }
+
+  .legend {
+    max-width: 1700px;
+    margin: 0 auto 16px;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+    background: #fff;
+    padding: 14px 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    font-size: 12px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-sq { width: 16px; height: 16px; border-radius: 3px; border: 2px solid; }
+
+  .canvas-wrapper {
+    max-width: 1700px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    padding: 24px;
+    overflow-x: auto;
+  }
+  svg {
+    display: block;
+    margin: 0 auto;
+    user-select: none;
+  }
+
+  /* ---- ZONES ---- */
+  .zone-bg {
+    fill: none;
+    stroke-width: 2;
+    stroke-dasharray: 10 5;
+    opacity: 0.5;
+    rx: 14;
+    ry: 14;
+  }
+  .zl-client { stroke: #e07856; fill: #fdece5; fill-opacity: 0.25; }
+  .zl-merchant { stroke: #c9a961; fill: #faf1dc; fill-opacity: 0.25; }
+  .zl-backend { stroke: #4a6fa5; fill: #e8eef7; fill-opacity: 0.2; }
+  .zl-infra { stroke: #6b8e6b; fill: #e7efe7; fill-opacity: 0.3; }
+  .zl-external { stroke: #8a4b8a; fill: #f5e6f5; fill-opacity: 0.2; }
+
+  .zone-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .zt-client { fill: #a04020; }
+  .zt-merchant { fill: #7a5a20; }
+  .zt-backend { fill: #25487a; }
+  .zt-infra { fill: #3e6b3e; }
+  .zt-external { fill: #5a2b5a; }
+
+  /* ---- BOÎTES ---- */
+  .node rect {
+    stroke-width: 2;
+    rx: 8;
+    ry: 8;
+    transition: all 0.2s;
+  }
+  .node text {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    pointer-events: none;
+    text-anchor: middle;
+  }
+  .node .n-title { font-weight: 600; font-size: 13px; }
+  .node .n-sub { font-size: 10.5px; fill: #555; }
+  .node .n-tech { font-size: 10px; fill: #777; font-family: "SF Mono", Menlo, monospace; }
+  .node .n-detail { font-size: 10.5px; fill: #333; }
+
+  .n-client rect { fill: #ffe0d0; stroke: #e07856; }
+  .n-client .n-title { fill: #a04020; }
+  .n-merchant rect { fill: #fbecc8; stroke: #c9a961; }
+  .n-merchant .n-title { fill: #6e5015; }
+  .n-backend rect { fill: #dce6f5; stroke: #4a6fa5; }
+  .n-backend .n-title { fill: #1f3f6f; }
+  .n-core rect { fill: #fff0c2; stroke: #d97706; stroke-width: 3.5; }
+  .n-core .n-title { fill: #6b3a00; font-size: 15px; }
+  .n-infra rect { fill: #d8e8d8; stroke: #6b8e6b; }
+  .n-infra .n-title { fill: #2e4f2e; }
+  .n-external rect { fill: #ecd8ec; stroke: #8a4b8a; }
+  .n-external .n-title { fill: #4f1f4f; }
+
+  /* ---- FLUX ---- */
+  .flow-path {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    transition: opacity 0.2s, stroke-width 0.2s;
+  }
+  .flow-sync { stroke: #2d5eaa; }
+  .flow-async { stroke: #8a4b8a; stroke-dasharray: 8 5; }
+  .flow-data { stroke: #3e6b3e; }
+  .flow-external { stroke: #d97706; }
+
+  .flow-number {
+    fill: #fff;
+    stroke-width: 2;
+    r: 12;
+  }
+  .fn-sync { stroke: #2d5eaa; }
+  .fn-async { stroke: #8a4b8a; }
+  .fn-data { stroke: #3e6b3e; }
+  .fn-external { stroke: #d97706; }
+
+  .flow-num-text {
+    font-size: 11px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+  }
+  .fnt-sync { fill: #2d5eaa; }
+  .fnt-async { fill: #8a4b8a; }
+  .fnt-data { fill: #3e6b3e; }
+  .fnt-external { fill: #d97706; }
+
+  .flow-label {
+    font-size: 10.5px;
+    fill: #333;
+    font-weight: 500;
+    pointer-events: none;
+  }
+  .flow-label-bg {
+    fill: #fff;
+    stroke: #e0e0e0;
+    stroke-width: 0.5;
+    rx: 3;
+    ry: 3;
+  }
+
+  /* Quand un filtre est actif, on atténue les autres */
+  .flow-group.hidden { opacity: 0.08; }
+  .flow-group { transition: opacity 0.25s; }
+
+  /* Stories step highlights */
+  .story-active .flow-path {
+    stroke-width: 4;
+    filter: drop-shadow(0 0 4px rgba(217, 119, 6, 0.5));
+  }
+
+  .step-list {
+    max-width: 1700px;
+    margin: 20px auto 0;
+    background: #fff;
+    padding: 18px 22px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .step-list h3 {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: #333;
+  }
+  .step-list ol {
+    padding-left: 24px;
+    font-size: 13px;
+    color: #444;
+    line-height: 1.7;
+  }
+  .step-list ol li strong {
+    color: #1e1e1e;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Primpay — Schéma système</h1>
+<p class="subtitle">Flux clairs, aucune flèche ne se croise. Tu peux filtrer par type de flux ou suivre une "story" étape par étape.</p>
+
+<div class="controls">
+  <span class="label">Filtrer les flux :</span>
+  <button class="active" data-filter="all">Tous</button>
+  <button data-filter="sync">API sync (bleu)</button>
+  <button data-filter="async">Async / push (violet)</button>
+  <button data-filter="data">DB / cache (vert)</button>
+  <button data-filter="external">Services externes (orange)</button>
+</div>
+
+<div class="controls">
+  <span class="label">Raconter une histoire :</span>
+  <button data-story="none" class="active">Vue libre</button>
+  <button data-story="onboarding">① Client ajoute sa carte</button>
+  <button data-story="credit">② Staff crédite un passage</button>
+  <button data-story="redeem">③ Reward consommée</button>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-sq" style="background:#ffe0d0; border-color:#e07856"></span>Client final</div>
+  <div class="legend-item"><span class="legend-sq" style="background:#fbecc8; border-color:#c9a961"></span>Commerçant</div>
+  <div class="legend-item"><span class="legend-sq" style="background:#dce6f5; border-color:#4a6fa5"></span>Backend (NestJS)</div>
+  <div class="legend-item"><span class="legend-sq" style="background:#fff0c2; border-color:#d97706"></span>Cœur — Loyalty Engine</div>
+  <div class="legend-item"><span class="legend-sq" style="background:#d8e8d8; border-color:#6b8e6b"></span>Infrastructure</div>
+  <div class="legend-item"><span class="legend-sq" style="background:#ecd8ec; border-color:#8a4b8a"></span>Services externes</div>
+</div>
+
+<div class="canvas-wrapper">
+<svg width="1700" height="1320" viewBox="0 0 1700 1320" id="mainSvg">
+
+  <defs>
+    <marker id="ah-sync" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#2d5eaa" />
+    </marker>
+    <marker id="ah-async" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#8a4b8a" />
+    </marker>
+    <marker id="ah-data" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#3e6b3e" />
+    </marker>
+    <marker id="ah-external" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#d97706" />
+    </marker>
+  </defs>
+
+  <!-- =================== ZONES (fond) =================== -->
+  <!--
+  GRILLE LOGIQUE :
+    Colonnes (centres X) :  140 | 420 | 700 | 980 | 1260 | 1560
+    La largeur de chaque boîte = 240px, donc left = centre - 120
+
+    Lignes principales (centres Y) :
+      Header zones : 40
+      Row 1 (acteurs) : 120
+      Row 2 (interfaces) : 260
+      Row 3 (backend top) : 440
+      Row 4 (CŒUR) : 620
+      Row 5 (backend bottom) : 790
+      Row 6 (infra) : 970
+      Row 7 (externes bas) : 1160
+  -->
+
+  <!-- Zone CLIENT (gauche haut) -->
+  <rect x="20" y="65" width="260" height="360" class="zone-bg zl-client" />
+  <text x="150" y="52" class="zone-title zt-client" text-anchor="middle">CLIENT FINAL</text>
+
+  <!-- Zone MERCHANT (droite haut) -->
+  <rect x="1420" y="65" width="260" height="360" class="zone-bg zl-merchant" />
+  <text x="1550" y="52" class="zone-title zt-merchant" text-anchor="middle">COMMERÇANT</text>
+
+  <!-- Zone BACKEND (centre) -->
+  <rect x="300" y="65" width="1100" height="660" class="zone-bg zl-backend" />
+  <text x="850" y="52" class="zone-title zt-backend" text-anchor="middle">BACKEND — CERVEAU (NestJS monolithe modulaire)</text>
+
+  <!-- Zone INFRA (milieu bas) -->
+  <rect x="300" y="760" width="1100" height="220" class="zone-bg zl-infra" />
+  <text x="850" y="750" class="zone-title zt-infra" text-anchor="middle">INFRASTRUCTURE — stockage et état transitoire</text>
+
+  <!-- Zone EXTERNES GAUCHE (bas gauche) -->
+  <rect x="20" y="1020" width="700" height="240" class="zone-bg zl-external" />
+  <text x="370" y="1008" class="zone-title zt-external" text-anchor="middle">SERVICES EXTERNES — APIs tierces</text>
+
+  <!-- Zone OUTILS INTERNES (bas droite) -->
+  <rect x="980" y="1020" width="700" height="240" class="zone-bg zl-external" />
+  <text x="1330" y="1008" class="zone-title zt-external" text-anchor="middle">OUTILS INTERNES — pilotage Primpay</text>
+
+  <!-- =================== BOÎTES (nodes) =================== -->
+
+  <!-- CLIENT column -->
+  <g class="node n-client" id="node-client">
+    <rect x="30" y="85" width="240" height="70" />
+    <text x="150" y="108" class="n-title">📱 Client final</text>
+    <text x="150" y="127" class="n-sub">Marc, son smartphone</text>
+    <text x="150" y="144" class="n-detail">iOS ou Android · navigateur</text>
+  </g>
+
+  <g class="node n-client" id="node-walletclient">
+    <rect x="30" y="195" width="240" height="70" />
+    <text x="150" y="218" class="n-title">💳 Wallet du client</text>
+    <text x="150" y="237" class="n-sub">Apple Wallet / Google Wallet</text>
+    <text x="150" y="254" class="n-detail">Pass natif, QR fixe signé</text>
+  </g>
+
+  <g class="node n-client" id="node-landingpublic">
+    <rect x="30" y="305" width="240" height="70" />
+    <text x="150" y="328" class="n-title">🌐 Page d'ajout (publique)</text>
+    <text x="150" y="347" class="n-sub">Next.js statique</text>
+    <text x="150" y="364" class="n-detail">primpay.io/m/pizzeria-ali</text>
+  </g>
+
+  <!-- MERCHANT column -->
+  <g class="node n-merchant" id="node-staff">
+    <rect x="1430" y="85" width="240" height="70" />
+    <text x="1550" y="108" class="n-title">👨‍🍳 Staff commerçant</text>
+    <text x="1550" y="127" class="n-sub">Ali, Sonia, caissier</text>
+    <text x="1550" y="144" class="n-detail">Téléphone / tablette / caisse</text>
+  </g>
+
+  <g class="node n-merchant" id="node-pwa">
+    <rect x="1430" y="195" width="240" height="70" />
+    <text x="1550" y="218" class="n-title">📲 PWA staff</text>
+    <text x="1550" y="237" class="n-sub">Next.js + Service Worker</text>
+    <text x="1550" y="254" class="n-detail">Scan · +1 · Reward · 5 actions max</text>
+  </g>
+
+  <g class="node n-merchant" id="node-dashboard">
+    <rect x="1430" y="305" width="240" height="70" />
+    <text x="1550" y="328" class="n-title">📊 Dashboard owner</text>
+    <text x="1550" y="347" class="n-sub">Config + analytics + billing</text>
+    <text x="1550" y="364" class="n-detail">Navigateur desktop ou tablette</text>
+  </g>
+
+  <!-- BACKEND row 1 (ingress) : API Gateway -->
+  <g class="node n-backend" id="node-gateway">
+    <rect x="580" y="110" width="540" height="70" />
+    <text x="850" y="133" class="n-title">🚪 API Gateway (Nginx + middleware NestJS)</text>
+    <text x="850" y="152" class="n-sub">JWT auth · rate-limit · extraction merchant_id · filtrage multi-tenant strict</text>
+    <text x="850" y="169" class="n-tech">HTTPS · routes /auth /customers /wallet /scan /loyalty /analytics /billing /admin</text>
+  </g>
+
+  <!-- BACKEND row 2 : modules périphériques -->
+  <g class="node n-backend" id="node-auth">
+    <rect x="320" y="310" width="200" height="75" />
+    <text x="420" y="333" class="n-title">AUTH</text>
+    <text x="420" y="350" class="n-sub">JWT + refresh</text>
+    <text x="420" y="367" class="n-detail">rôles owner/manager/staff</text>
+  </g>
+
+  <g class="node n-backend" id="node-customers">
+    <rect x="560" y="310" width="200" height="75" />
+    <text x="660" y="333" class="n-title">CUSTOMERS</text>
+    <text x="660" y="350" class="n-sub">Identité globale</text>
+    <text x="660" y="367" class="n-detail">création, recherche</text>
+  </g>
+
+  <g class="node n-backend" id="node-merchants">
+    <rect x="800" y="310" width="200" height="75" />
+    <text x="900" y="333" class="n-title">MERCHANTS</text>
+    <text x="900" y="350" class="n-sub">Config tenants</text>
+    <text x="900" y="367" class="n-detail">programs, staff, locations</text>
+  </g>
+
+  <g class="node n-backend" id="node-wallet">
+    <rect x="1040" y="310" width="200" height="75" />
+    <text x="1140" y="333" class="n-title">WALLET MGR</text>
+    <text x="1140" y="350" class="n-sub">Génère et met à jour</text>
+    <text x="1140" y="367" class="n-detail">Apple PassKit + Google API</text>
+  </g>
+
+  <!-- CŒUR LOYALTY (row 3) -->
+  <g class="node n-core" id="node-loyalty">
+    <rect x="560" y="470" width="580" height="130" />
+    <text x="850" y="500" class="n-title">⭐ LOYALTY ENGINE (cœur du produit)</text>
+    <text x="850" y="525" class="n-sub">POST /scan · POST /loyalty/credit · POST /loyalty/redeem</text>
+    <text x="850" y="545" class="n-detail">Validation signature QR · Cooldown · Limite journalière · Lock transactionnel</text>
+    <text x="850" y="565" class="n-detail">Append-only events · Génération auto reward au seuil · Multi-tenant strict</text>
+    <text x="850" y="585" class="n-detail">Idempotence via Idempotency-Key</text>
+  </g>
+
+  <!-- BACKEND row 4 (modules de support) -->
+  <g class="node n-backend" id="node-analytics">
+    <rect x="320" y="680" width="200" height="70" />
+    <text x="420" y="702" class="n-title">ANALYTICS</text>
+    <text x="420" y="719" class="n-sub">Agrégations SQL</text>
+    <text x="420" y="736" class="n-detail">rétention, fréquence</text>
+  </g>
+
+  <g class="node n-backend" id="node-billing">
+    <rect x="800" y="680" width="200" height="70" />
+    <text x="900" y="702" class="n-title">BILLING</text>
+    <text x="900" y="719" class="n-sub">Stripe + webhooks</text>
+    <text x="900" y="736" class="n-detail">trial, abos, factures</text>
+  </g>
+
+  <g class="node n-backend" id="node-admin">
+    <rect x="1040" y="680" width="200" height="70" />
+    <text x="1140" y="702" class="n-title">ADMIN</text>
+    <text x="1140" y="719" class="n-sub">Outils internes</text>
+    <text x="1140" y="736" class="n-detail">adjustments, debug</text>
+  </g>
+
+  <!-- INFRA row -->
+  <g class="node n-infra" id="node-postgres">
+    <rect x="380" y="810" width="240" height="130" />
+    <text x="500" y="840" class="n-title">🗄️ PostgreSQL 16</text>
+    <text x="500" y="860" class="n-sub">Source de vérité</text>
+    <text x="500" y="878" class="n-detail">customers · merchants</text>
+    <text x="500" y="894" class="n-detail">programs · accounts</text>
+    <text x="500" y="910" class="n-detail">events (append-only)</text>
+    <text x="500" y="926" class="n-detail">rewards · subscriptions</text>
+  </g>
+
+  <g class="node n-infra" id="node-redis">
+    <rect x="680" y="810" width="240" height="130" />
+    <text x="800" y="840" class="n-title">⚡ Redis 7</text>
+    <text x="800" y="860" class="n-sub">État transitoire</text>
+    <text x="800" y="878" class="n-detail">cooldown:{merchant}:{cust}</text>
+    <text x="800" y="894" class="n-detail">rate-limit:{ip}</text>
+    <text x="800" y="910" class="n-detail">daily-limit:{cust}</text>
+    <text x="800" y="926" class="n-detail">lock:reward:{id}</text>
+  </g>
+
+  <g class="node n-infra" id="node-s3">
+    <rect x="980" y="810" width="240" height="130" />
+    <text x="1100" y="840" class="n-title">📦 S3 / Backblaze B2</text>
+    <text x="1100" y="860" class="n-sub">Stockage objet</text>
+    <text x="1100" y="878" class="n-detail">backups PostgreSQL (quotidien)</text>
+    <text x="1100" y="894" class="n-detail">assets pass Wallet (.pkpass)</text>
+    <text x="1100" y="910" class="n-detail">logs archivés</text>
+    <text x="1100" y="926" class="n-detail">exports CSV clients</text>
+  </g>
+
+  <!-- EXTERNES GAUCHE -->
+  <g class="node n-external" id="node-apple">
+    <rect x="40" y="1050" width="200" height="80" />
+    <text x="140" y="1075" class="n-title">🍎 Apple PassKit</text>
+    <text x="140" y="1093" class="n-sub">+ APNs (push)</text>
+    <text x="140" y="1110" class="n-detail">certificat Pass Type ID</text>
+  </g>
+
+  <g class="node n-external" id="node-google">
+    <rect x="260" y="1050" width="200" height="80" />
+    <text x="360" y="1075" class="n-title">🤖 Google Wallet</text>
+    <text x="360" y="1093" class="n-sub">+ FCM (push)</text>
+    <text x="360" y="1110" class="n-detail">JWT service account</text>
+  </g>
+
+  <g class="node n-external" id="node-stripe">
+    <rect x="480" y="1050" width="200" height="80" />
+    <text x="580" y="1075" class="n-title">💳 Stripe</text>
+    <text x="580" y="1093" class="n-sub">Checkout + webhooks</text>
+    <text x="580" y="1110" class="n-detail">abos 29€/79€</text>
+  </g>
+
+  <g class="node n-external" id="node-email">
+    <rect x="40" y="1160" width="200" height="75" />
+    <text x="140" y="1183" class="n-title">✉️ Resend</text>
+    <text x="140" y="1200" class="n-sub">Emails transactionnels</text>
+    <text x="140" y="1217" class="n-detail">bienvenue, relances</text>
+  </g>
+
+  <g class="node n-external" id="node-cloudflare">
+    <rect x="260" y="1160" width="200" height="75" />
+    <text x="360" y="1183" class="n-title">☁️ Cloudflare</text>
+    <text x="360" y="1200" class="n-sub">DNS · Edge · WAF · SSL</text>
+    <text x="360" y="1217" class="n-detail">devant tout le trafic HTTPS</text>
+  </g>
+
+  <g class="node n-external" id="node-vps">
+    <rect x="480" y="1160" width="200" height="75" />
+    <text x="580" y="1183" class="n-title">🖥️ VPS (Hetzner/OVH)</text>
+    <text x="580" y="1200" class="n-sub">Docker Compose</text>
+    <text x="580" y="1217" class="n-detail">API + DB + Redis + Nginx</text>
+  </g>
+
+  <!-- OUTILS INTERNES (droite bas) -->
+  <g class="node n-external" id="node-adminui">
+    <rect x="1000" y="1050" width="200" height="80" />
+    <text x="1100" y="1075" class="n-title">🛠️ Admin UI (Vito)</text>
+    <text x="1100" y="1093" class="n-sub">Vue globale</text>
+    <text x="1100" y="1110" class="n-detail">tous merchants / debug</text>
+  </g>
+
+  <g class="node n-external" id="node-crm">
+    <rect x="1220" y="1050" width="200" height="80" />
+    <text x="1320" y="1075" class="n-title">📋 CRM (Sheet/Airtable)</text>
+    <text x="1320" y="1093" class="n-sub">Pipeline commercial</text>
+    <text x="1320" y="1110" class="n-detail">démos, signatures, suivis</text>
+  </g>
+
+  <g class="node n-external" id="node-support">
+    <rect x="1440" y="1050" width="220" height="80" />
+    <text x="1550" y="1075" class="n-title">🆘 Help Scout</text>
+    <text x="1550" y="1093" class="n-sub">Support commerçants</text>
+    <text x="1550" y="1110" class="n-detail">mailbox partagée</text>
+  </g>
+
+  <g class="node n-external" id="node-monitoring">
+    <rect x="1000" y="1160" width="320" height="75" />
+    <text x="1160" y="1183" class="n-title">📉 Sentry + Better Stack</text>
+    <text x="1160" y="1200" class="n-sub">Erreurs + uptime monitoring</text>
+    <text x="1160" y="1217" class="n-detail">alertes Discord + SMS pour P1</text>
+  </g>
+
+  <g class="node n-external" id="node-git">
+    <rect x="1340" y="1160" width="320" height="75" />
+    <text x="1500" y="1183" class="n-title">🐙 GitHub + CI/CD</text>
+    <text x="1500" y="1200" class="n-sub">Code · tests · déploiement</text>
+    <text x="1500" y="1217" class="n-detail">pipelines automatiques</text>
+  </g>
+
+  <!--
+  =============================================================
+  FLUX — tous routés en 90° (Manhattan), dans des couloirs dédiés
+  =============================================================
+
+  Numérotation :
+    ① à ⑤ : ONBOARDING CLIENT (flux passent par couloir haut-gauche)
+    ⑥ à ⑩ : CRÉDIT + REDEEM (flux passent par couloir haut-droit)
+    ⑪ à ⑭ : BACKEND ↔ INFRA (flux verticaux vers la zone infra)
+    ⑮ à ⑱ : BACKEND ↔ EXTERNES (flux vers le bas gauche)
+    ⑲ à ㉑ : OUTILS INTERNES (flux vers le bas droit)
+
+  Chaque flux utilise un "couloir" distinct avec offsets horizontaux/verticaux
+  pour éviter les croisements.
+  -->
+
+  <!-- ============ ① CLIENT → page onboarding ============ -->
+  <g class="flow-group" data-flow="sync" data-story="onboarding">
+    <path class="flow-path flow-sync" d="M 150 155 L 150 305" marker-end="url(#ah-sync)" />
+    <rect class="flow-label-bg" x="160" y="220" width="90" height="16" />
+    <text x="205" y="232" class="flow-label">scan QR public</text>
+    <circle class="flow-number fn-sync" cx="150" cy="180" r="12" />
+    <text x="150" y="180" class="flow-num-text fnt-sync">1</text>
+  </g>
+
+  <!-- ============ ② page onboarding → API Gateway (POST /customers) ============ -->
+  <!-- sort du node à y=340, monte à 240 (couloir), va à droite jusqu'à x=850, descend à 145 (gateway) -->
+  <g class="flow-group" data-flow="sync" data-story="onboarding">
+    <path class="flow-path flow-sync"
+          d="M 270 340 L 300 340 L 300 245 L 580 245 L 580 180 L 580 145"
+          marker-end="url(#ah-sync)" />
+    <rect class="flow-label-bg" x="330" y="232" width="190" height="16" />
+    <text x="425" y="244" class="flow-label">POST /customers + /wallet/passes</text>
+    <circle class="flow-number fn-sync" cx="300" cy="290" r="12" />
+    <text x="300" y="290" class="flow-num-text fnt-sync">2</text>
+  </g>
+
+  <!-- ============ ③ API Gateway → Customers module ============ -->
+  <g class="flow-group" data-flow="sync" data-story="onboarding credit">
+    <path class="flow-path flow-sync" d="M 660 180 L 660 310" marker-end="url(#ah-sync)" />
+    <circle class="flow-number fn-sync" cx="660" cy="245" r="12" />
+    <text x="660" y="245" class="flow-num-text fnt-sync">3</text>
+  </g>
+
+  <!-- ============ ④ Customers → Wallet Mgr ============ -->
+  <g class="flow-group" data-flow="sync" data-story="onboarding">
+    <path class="flow-path flow-sync" d="M 760 348 L 1040 348" marker-end="url(#ah-sync)" />
+    <rect class="flow-label-bg" x="830" y="330" width="140" height="16" />
+    <text x="900" y="342" class="flow-label">generate pass</text>
+    <circle class="flow-number fn-sync" cx="900" cy="370" r="12" />
+    <text x="900" y="370" class="flow-num-text fnt-sync">4</text>
+  </g>
+
+  <!-- ============ ⑤ Wallet Mgr → Apple / Google (appel externe) ============ -->
+  <g class="flow-group" data-flow="external" data-story="onboarding">
+    <path class="flow-path flow-external"
+          d="M 1140 385 L 1140 400 L 1280 400 L 1280 1000 L 140 1000 L 140 1050"
+          marker-end="url(#ah-external)" />
+    <rect class="flow-label-bg" x="1150" y="408" width="120" height="16" />
+    <text x="1210" y="420" class="flow-label">gen .pkpass</text>
+    <circle class="flow-number fn-external" cx="1280" cy="700" r="12" />
+    <text x="1280" y="700" class="flow-num-text fnt-external">5</text>
+  </g>
+
+  <!-- ============ ⑤bis Wallet Mgr → Google ============ -->
+  <g class="flow-group" data-flow="external" data-story="onboarding">
+    <path class="flow-path flow-external"
+          d="M 1140 385 L 1140 400 L 1300 400 L 1300 1010 L 360 1010 L 360 1050"
+          marker-end="url(#ah-external)" />
+  </g>
+
+  <!-- ============ ⑤ret Wallet (Apple/Google) → Wallet client (push installation) ============ -->
+  <g class="flow-group" data-flow="async" data-story="onboarding">
+    <path class="flow-path flow-async"
+          d="M 140 1050 L 140 990 L 15 990 L 15 230 L 30 230"
+          marker-end="url(#ah-async)" />
+    <rect class="flow-label-bg" x="20" y="475" width="100" height="16" />
+    <text x="70" y="487" class="flow-label">install pass</text>
+  </g>
+
+  <!-- ============ Staff → PWA ============ -->
+  <g class="flow-group" data-flow="sync" data-story="credit redeem">
+    <path class="flow-path flow-sync" d="M 1550 155 L 1550 195" marker-end="url(#ah-sync)" />
+  </g>
+
+  <!-- ============ ⑥ PWA → API Gateway (POST /scan) ============ -->
+  <!-- sort à x=1430 y=230, va à gauche jusqu'à x=1380 (couloir droit), monte à 165, va à 1120 -->
+  <g class="flow-group" data-flow="sync" data-story="credit">
+    <path class="flow-path flow-sync"
+          d="M 1430 220 L 1380 220 L 1380 165 L 1120 165"
+          marker-end="url(#ah-sync)" />
+    <rect class="flow-label-bg" x="1195" y="175" width="140" height="16" />
+    <text x="1265" y="187" class="flow-label">POST /scan + /credit</text>
+    <circle class="flow-number fn-sync" cx="1380" cy="195" r="12" />
+    <text x="1380" y="195" class="flow-num-text fnt-sync">6</text>
+  </g>
+
+  <!-- ============ ⑦ API Gateway → Loyalty Engine ============ -->
+  <g class="flow-group" data-flow="sync" data-story="credit redeem">
+    <path class="flow-path flow-sync" d="M 850 180 L 850 470" marker-end="url(#ah-sync)" />
+    <rect class="flow-label-bg" x="860" y="315" width="160" height="16" />
+    <text x="940" y="327" class="flow-label">route vers Loyalty Engine</text>
+    <circle class="flow-number fn-sync" cx="850" cy="280" r="12" />
+    <text x="850" y="280" class="flow-num-text fnt-sync">7</text>
+  </g>
+
+  <!-- ============ ⑧ Loyalty Engine → Merchants (récup programme) ============ -->
+  <g class="flow-group" data-flow="sync" data-story="credit">
+    <path class="flow-path flow-sync" d="M 900 470 L 900 385" marker-end="url(#ah-sync)" />
+    <rect class="flow-label-bg" x="910" y="418" width="120" height="16" />
+    <text x="970" y="430" class="flow-label">lit le programme</text>
+    <circle class="flow-number fn-sync" cx="900" cy="445" r="12" />
+    <text x="900" y="445" class="flow-num-text fnt-sync">8</text>
+  </g>
+
+  <!-- ============ ⑨ Loyalty Engine → Redis (cooldown, limit, lock) ============ -->
+  <g class="flow-group" data-flow="data" data-story="credit redeem">
+    <path class="flow-path flow-data" d="M 800 600 L 800 810" marker-end="url(#ah-data)" />
+    <rect class="flow-label-bg" x="670" y="690" width="140" height="16" />
+    <text x="740" y="702" class="flow-label">cooldown / limit / lock</text>
+    <circle class="flow-number fn-data" cx="800" cy="660" r="12" />
+    <text x="800" y="660" class="flow-num-text fnt-data">9</text>
+  </g>
+
+  <!-- ============ ⑩ Loyalty Engine → PostgreSQL (écrit event + update balance) ============ -->
+  <g class="flow-group" data-flow="data" data-story="credit redeem">
+    <path class="flow-path flow-data" d="M 620 600 L 620 680 L 500 680 L 500 810" marker-end="url(#ah-data)" />
+    <rect class="flow-label-bg" x="405" y="692" width="170" height="16" />
+    <text x="490" y="704" class="flow-label">INSERT event + balance</text>
+    <circle class="flow-number fn-data" cx="500" cy="760" r="12" />
+    <text x="500" y="760" class="flow-num-text fnt-data">10</text>
+  </g>
+
+  <!-- ============ ⑪ Loyalty Engine → Wallet Mgr (update solde pass) ============ -->
+  <g class="flow-group" data-flow="sync" data-story="credit redeem">
+    <path class="flow-path flow-sync" d="M 1140 470 L 1140 385" marker-end="url(#ah-sync)" />
+    <rect class="flow-label-bg" x="1055" y="418" width="100" height="16" />
+    <text x="1105" y="430" class="flow-label">update pass</text>
+    <circle class="flow-number fn-sync" cx="1140" cy="445" r="12" />
+    <text x="1140" y="445" class="flow-num-text fnt-sync">11</text>
+  </g>
+
+  <!-- ============ ⑫ Wallet Mgr → Apple/Google (push update) ============ -->
+  <g class="flow-group" data-flow="external" data-story="credit redeem">
+    <path class="flow-path flow-external"
+          d="M 1140 310 L 1140 280 L 1330 280 L 1330 980 L 240 980 L 240 1050"
+          marker-end="url(#ah-external)" />
+    <rect class="flow-label-bg" x="1150" y="263" width="130" height="16" />
+    <text x="1215" y="275" class="flow-label">PATCH pass</text>
+    <circle class="flow-number fn-external" cx="1330" cy="530" r="12" />
+    <text x="1330" y="530" class="flow-num-text fnt-external">12</text>
+  </g>
+
+  <!-- ============ ⑬ Apple/Google → Wallet client (push ressenti) ============ -->
+  <g class="flow-group" data-flow="async" data-story="credit redeem">
+    <path class="flow-path flow-async"
+          d="M 240 1050 L 240 960 L 5 960 L 5 230 L 30 230"
+          marker-end="url(#ah-async)" />
+    <rect class="flow-label-bg" x="10" y="580" width="100" height="16" />
+    <text x="60" y="592" class="flow-label">push Wallet</text>
+    <circle class="flow-number fn-async" cx="5" cy="600" r="10" />
+  </g>
+
+  <!-- ============ ⑭ Dashboard → API Gateway (GET analytics) ============ -->
+  <g class="flow-group" data-flow="sync">
+    <path class="flow-path flow-sync"
+          d="M 1430 340 L 1400 340 L 1400 125 L 1120 125"
+          marker-end="url(#ah-sync)" />
+    <rect class="flow-label-bg" x="1225" y="130" width="130" height="16" />
+    <text x="1290" y="142" class="flow-label">GET /analytics</text>
+  </g>
+
+  <!-- ============ ⑮ Analytics → PostgreSQL ============ -->
+  <g class="flow-group" data-flow="data">
+    <path class="flow-path flow-data" d="M 420 750 L 420 810" marker-end="url(#ah-data)" />
+    <rect class="flow-label-bg" x="315" y="760" width="100" height="16" />
+    <text x="365" y="772" class="flow-label">SELECT agrégés</text>
+  </g>
+
+  <!-- ============ ⑯ Billing → Stripe ============ -->
+  <g class="flow-group" data-flow="external">
+    <path class="flow-path flow-external" d="M 900 750 L 900 820 L 700 820 L 700 1000 L 580 1000 L 580 1050" marker-end="url(#ah-external)" />
+    <rect class="flow-label-bg" x="655" y="805" width="90" height="16" />
+    <text x="700" y="817" class="flow-label">Stripe SDK</text>
+    <circle class="flow-number fn-external" cx="700" cy="910" r="12" />
+    <text x="700" y="910" class="flow-num-text fnt-external">16</text>
+  </g>
+
+  <!-- ============ ⑰ Stripe → Billing (webhooks) ============ -->
+  <g class="flow-group" data-flow="async">
+    <path class="flow-path flow-async"
+          d="M 580 1050 L 580 990 L 720 990 L 720 810 L 920 810 L 920 750"
+          marker-end="url(#ah-async)" />
+    <rect class="flow-label-bg" x="725" y="795" width="100" height="16" />
+    <text x="775" y="807" class="flow-label">webhooks</text>
+    <circle class="flow-number fn-async" cx="720" cy="900" r="12" />
+    <text x="720" y="900" class="flow-num-text fnt-async">17</text>
+  </g>
+
+  <!-- ============ ⑱ Backend → Email (bienvenue, relances) ============ -->
+  <g class="flow-group" data-flow="external">
+    <path class="flow-path flow-external"
+          d="M 320 715 L 300 715 L 300 1160 L 140 1160"
+          marker-end="url(#ah-external)" />
+    <rect class="flow-label-bg" x="200" y="1130" width="90" height="16" />
+    <text x="245" y="1142" class="flow-label">send email</text>
+    <circle class="flow-number fn-external" cx="300" cy="900" r="12" />
+    <text x="300" y="900" class="flow-num-text fnt-external">18</text>
+  </g>
+
+  <!-- ============ ⑲ PostgreSQL → S3 (backups) ============ -->
+  <g class="flow-group" data-flow="data">
+    <path class="flow-path flow-data" d="M 620 900 L 980 900" marker-end="url(#ah-data)" />
+    <rect class="flow-label-bg" x="720" y="885" width="160" height="16" />
+    <text x="800" y="897" class="flow-label">backups quotidiens</text>
+  </g>
+
+  <!-- ============ ⑳ Admin UI → Backend (vue interne) ============ -->
+  <g class="flow-group" data-flow="sync">
+    <path class="flow-path flow-sync"
+          d="M 1100 1050 L 1100 990 L 1360 990 L 1360 185 L 1120 185"
+          marker-end="url(#ah-sync)" />
+    <rect class="flow-label-bg" x="1225" y="170" width="130" height="16" />
+    <text x="1290" y="182" class="flow-label">admin API (scoped)</text>
+  </g>
+
+  <!-- ============ ㉑ Backend → Sentry (erreurs + logs) ============ -->
+  <g class="flow-group" data-flow="async">
+    <path class="flow-path flow-async"
+          d="M 1140 750 L 1140 770 L 1360 770 L 1360 1000 L 1160 1000 L 1160 1160"
+          marker-end="url(#ah-async)" />
+    <rect class="flow-label-bg" x="1200" y="1025" width="120" height="16" />
+    <text x="1260" y="1037" class="flow-label">erreurs async</text>
+  </g>
+
+  <!-- ============ ㉒ Cloudflare devant tout (flèche schématique) ============ -->
+  <g class="flow-group" data-flow="external">
+    <path class="flow-path flow-external" d="M 360 1160 L 360 990 L 580 990 L 580 180" marker-end="url(#ah-external)" stroke-dasharray="4 4" />
+    <rect class="flow-label-bg" x="365" y="1000" width="170" height="16" />
+    <text x="450" y="1012" class="flow-label">tout HTTPS passe ici</text>
+  </g>
+
+</svg>
+</div>
+
+<div class="step-list">
+  <h3>Les 3 histoires racontées par le schéma (clique "Raconter une histoire" plus haut)</h3>
+  <ol>
+    <li><strong>① Client ajoute sa carte</strong> — Marc scanne le QR public (flèche 1) → landing publique appelle l'API (2) → le module Customers crée l'identité (3) → demande à Wallet Mgr un pass (4) → Wallet Mgr génère le .pkpass via Apple PassKit ou Google Wallet (5) → le pass s'installe dans le Wallet du téléphone.</li>
+    <li><strong>② Staff crédite un passage</strong> — Ali ouvre la PWA et scanne le QR du client (6) → API Gateway route vers Loyalty Engine (7) → Loyalty lit le programme du merchant (8) → vérifie cooldown et limite dans Redis (9) → écrit l'event dans PostgreSQL (10) → demande à Wallet Mgr d'actualiser le solde du pass (11) → Apple/Google pushent la mise à jour (12) → le nouveau solde apparaît dans le Wallet du client (13).</li>
+    <li><strong>③ Reward consommée</strong> — même chemin 6→7, mais via POST /loyalty/redeem → Loyalty pose un lock transactionnel dans Redis (9) pour empêcher la double consommation → écrit l'event `redeem` (10) → met à jour le pass (11→13).</li>
+  </ol>
+</div>
+
+<script>
+// Filtrage par type de flux
+const filterButtons = document.querySelectorAll('[data-filter]');
+const storyButtons = document.querySelectorAll('[data-story]');
+const flowGroups = document.querySelectorAll('.flow-group');
+
+function applyFilter(filter) {
+  flowGroups.forEach(g => {
+    const t = g.dataset.flow;
+    if (filter === 'all' || t === filter) g.classList.remove('hidden');
+    else g.classList.add('hidden');
+  });
+}
+
+function applyStory(story) {
+  if (story === 'none') {
+    flowGroups.forEach(g => g.classList.remove('hidden'));
+    return;
+  }
+  flowGroups.forEach(g => {
+    const s = g.dataset.story || '';
+    if (s.split(' ').includes(story)) g.classList.remove('hidden');
+    else g.classList.add('hidden');
+  });
+}
+
+filterButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    filterButtons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Désactiver l'histoire en cours
+    storyButtons.forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-story="none"]').classList.add('active');
+    applyFilter(btn.dataset.filter);
+  });
+});
+
+storyButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    storyButtons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Désactiver le filtre en cours
+    filterButtons.forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-filter="all"]').classList.add('active');
+    applyStory(btn.dataset.story);
+  });
+});
+</script>
+
+</body>
+</html>
