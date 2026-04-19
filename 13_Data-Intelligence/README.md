@@ -1,7 +1,7 @@
 ---
 Title: Data Intelligence — README
 Owner: Amine AIT ALI
-Status: draft
+Status: active
 Last reviewed: 2026-04-19
 Source of truth: yes
 Scope: 13_Data-Intelligence
@@ -11,20 +11,40 @@ Used by: 08_Performance-System/
 
 # Objectif
 
-Vue d'ensemble de la couche data : tracking, analytics, boucle feedback, détection de dérive.
+Instrumenter le système, collecter les signaux, détecter les dérives, alimenter les décisions.
 
-# Contexte
+# Structure
 
-_À compléter._
+```
+13_Data-Intelligence/
+├── README.md           — Ce fichier
+├── tracking-plan.md    — Quels événements tracker, avec quelles propriétés
+├── events.md           — Catalogue exhaustif des événements
+├── analytics.md        — Analyses récurrentes et lectures des données
+├── feedback-loop.md    — Comment les données remontent aux décisions
+├── ab-testing.md       — Tests A/B et expérimentations
+├── attribution.md      — Attribution des conversions aux canaux
+├── data-pipeline.md    — Pipeline de collecte et transformation
+├── data-quality.md     — Règles de qualité des données
+├── drift-detection.md  — Détection précoce des dérives
+└── realtime-layer.md   — Niveau de réactivité requis par flux
+```
 
-# Décisions figées
+# Maturité par phase
 
-_À compléter._
+| Phase | Niveau data |
+|---|---|
+| MVP (Phase 1) | Logs serveur + requêtes SQL manuelles + Sentry |
+| Phase 1.5 | Dashboard interne simple + tracking events clés |
+| Phase 2 | PostHog ou Mixpanel + pipeline analytics + alertes automatiques |
 
-# Questions ouvertes
+# Principes data
 
-_À compléter._
+- Pas de tracking client final sans base légale (RGPD).
+- Sentry : jamais de PII dans les breadcrumbs.
+- Les données analytics sont agrégées, pas individualisées dans les dashboards.
+- La source de vérité reste toujours la BDD PostgreSQL.
 
 # Dépendances
 
-_À compléter._
+- `08_Performance-System/`, `09_Legal/rgpd.md`

@@ -13,18 +13,37 @@ Used by: —
 
 Inventaire des jobs planifiés (cron, queues) et leur fréquence.
 
-# Contexte
+# Jobs cron (infrastructure)
 
-_À compléter._
+| Job | Commande | Fréquence | Serveur |
+|---|---|---|---|
+| Backup PostgreSQL | `pg_dump → object storage` | Quotidien 3h UTC | VPS |
+| Renouvellement SSL | `certbot renew` | Bi-mensuel | VPS |
+| Nettoyage logs Docker | `docker system prune` | Mensuel | VPS |
+| Nettoyage sessions Redis expirées | Automatique (Redis TTL) | Continu | Redis |
 
-# Décisions figées
+# Jobs applicatifs (NestJS — Phase 1.5)
 
-_À compléter._
+| Job | Module NestJS | Fréquence | Fonction |
+|---|---|---|---|
+| `wallet-pass-retry` | WalletModule | Toutes les 15 min | Retry des passes en échec |
+| `trial-expiry-reminder` | BillingModule | Quotidien | Email J-3 avant fin trial |
+| `inactive-merchant-alert` | AnalyticsModule | Quotidien | Alerte si 0 événement en 14 j |
+| `reward-expiry` | LoyaltyModule | Quotidien | Expirer les rewards non utilisées |
 
-# Questions ouvertes
+# Crontab prod (à configurer)
 
-_À compléter._
+```bash
+# Backup quotidien à 3h UTC
+0 3 * * * /opt/primpay/scripts/backup.sh
+
+# Renouvellement SSL le 1er et 15 du mois
+0 2 1,15 * * certbot renew --quiet
+
+# Nettoyage logs mensuel
+0 4 1 * * /opt/primpay/scripts/cleanup-logs.sh
+```
 
 # Dépendances
 
-_À compléter._
+- `scripts.md`, `triggers.md`

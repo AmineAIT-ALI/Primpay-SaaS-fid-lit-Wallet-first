@@ -13,18 +13,34 @@ Used by: —
 
 Inventaire des triggers événementiels et leurs actions associées.
 
-# Contexte
+# Triggers Stripe (webhooks)
 
-_À compléter._
+| Event Stripe | Action déclenchée | Module |
+|---|---|---|
+| `invoice.payment_succeeded` | `subscriptions.status` → `active` | BillingModule |
+| `invoice.payment_failed` | Email de relance merchant | BillingModule |
+| `customer.subscription.deleted` | `subscriptions.status` → `canceled`, merchant → read-only | BillingModule |
+| `customer.subscription.trial_will_end` | Email J-3 "Votre essai se termine" | BillingModule |
+| `customer.subscription.updated` | Mise à jour plan_code | BillingModule |
 
-# Décisions figées
+# Triggers applicatifs (NestJS events)
 
-_À compléter._
+| Événement interne | Action déclenchée | Module |
+|---|---|---|
+| `loyalty.credit` créé | Vérifier seuil → créer reward si atteint | LoyaltyModule |
+| `loyalty.credit` créé | Mettre à jour pass Wallet | WalletModule |
+| `reward.available` créé | Mettre à jour pass Wallet (badge récompense) | WalletModule |
+| `reward.redeemed` | Mettre à jour pass Wallet (solde remis à 0) | WalletModule |
+| `customer` créé | Générer pass Wallet | WalletModule |
 
-# Questions ouvertes
+# Triggers de monitoring
 
-_À compléter._
+| Signal | Action | Outil |
+|---|---|---|
+| Uptime < 99 % sur 5 min | Email + SMS Amine | UptimeRobot |
+| Nouvelle erreur 5xx | Email Amine | Sentry |
+| Erreur 5xx > 10/heure | Alerte urgente | Sentry |
 
 # Dépendances
 
-_À compléter._
+- `08_Performance-System/triggers.md`, `jobs.md`
