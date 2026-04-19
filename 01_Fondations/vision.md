@@ -1,11 +1,12 @@
 ---
-name: Vision du projet
-description: Ce qu'on vise à long terme et pourquoi ça compte
-type: project
-status: 🟡 En cours
-version: 1.0
-owner: Vito
-updated: 2026-04-17
+Title: Vision
+Owner: Amine AIT ALI
+Status: active
+Last reviewed: 2026-04-19
+Source of truth: yes
+Scope: 01_Fondations
+Depends on: —
+Used by: tous les documents
 ---
 
 # Vision

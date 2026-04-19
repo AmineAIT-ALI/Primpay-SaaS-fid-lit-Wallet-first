@@ -1,131 +1,104 @@
 ---
-name: Primpay — Table des matières projet
-description: Point d'entrée unique pour naviguer dans la documentation projet
-version: 1.0
-updated: 2026-04-17
-owner: Vito
+Title: Primpay — Project Operating System
+Owner: Amine AIT ALI
+Status: active
+Last reviewed: 2026-04-19
+Source of truth: yes
+Scope: racine
+Depends on: —
+Used by: tous les documents
 ---
 
-# Primpay — Documentation projet
+# Primpay — Project Operating System
 
-Solution SaaS de fidélité digitale universelle pour restaurants, wallet-first, QR-first.
+Solution SaaS de fidélité digitale universelle pour commerces alimentaires indépendants.
+**Wallet-first. QR-first. Zéro app. Crédit en < 2 secondes.**
 
-## Comment utiliser ce dépôt
+---
 
-Chaque dossier correspond à un chantier du projet. Chaque document suit la même trame :
-`Objectif → Contexte → Décisions figées → Questions ouvertes → Next steps`.
+## Mission de ce dépôt
 
-Un document ne rédige **qu'une seule chose** : pas de mélange stratégie / produit / tech dans le même fichier.
+Ce dépôt n'est pas un simple dossier de documentation.
+Il est le système nerveux du projet : penser, décider, exécuter, mesurer, détecter, apprendre.
 
-## Navigation
+Boucle maîtresse :
+```
+SIGNAL → DÉTECTION → DÉCISION → EXÉCUTION → VÉRIFICATION → APPRENTISSAGE
+```
 
-### [00_Pilotage-projet](./00_Pilotage-projet/)
-Méta-documents du projet : gouvernance, décisions, risques, glossaire.
+---
 
-- [README](./00_Pilotage-projet/README.md) — guide d'usage du dépôt
-- [Glossaire](./00_Pilotage-projet/glossaire.md) — vocabulaire partagé
-- [Journal des décisions (ADR)](./00_Pilotage-projet/journal-decisions.md)
-- [Registre des risques](./00_Pilotage-projet/registre-risques.md)
-- [Dépendances & blocages](./00_Pilotage-projet/dependances-blocages.md)
-- [Rituels & gouvernance](./00_Pilotage-projet/rituels-gouvernance.md)
+## Structure
 
-### [01_Fondations](./01_Fondations/)
-Ce qu'on construit et pourquoi. Socle stratégique.
+| Dossier | Rôle |
+|---|---|
+| [00_Pilotage/](./00_Pilotage/) | Gouvernance, décisions, risques, cadence, roadmap |
+| [01_Fondations/](./01_Fondations/) | Vision, problème, opportunité, principes, contraintes |
+| [02_Marche-Cible/](./02_Marche-Cible/) | Personas, segments, jobs-to-be-done, concurrents |
+| [03_Produit/](./03_Produit/) | MVP, features, règles métier, parcours, exclusions |
+| [04_Technique/](./04_Technique/) | Architecture, stack, infra, API, data model, ADRs |
+| [05_Business/](./05_Business/) | Pricing, revenus, unit economics, coûts, scénarios |
+| [06_GoToMarket/](./06_GoToMarket/) | Acquisition, canaux, funnel, sales motion, onboarding |
+| [07_Branding/](./07_Branding/) | Positionnement, messages, ton, narration, identité |
+| [08_Performance-System/](./08_Performance-System/) | North star, métriques, dashboards, seuils, alertes |
+| [09_Legal/](./09_Legal/) | RGPD, CGU/CGV, conformité, rétention, responsabilités |
+| [10_Operations/](./10_Operations/) | Support, incidents, déploiement, environnements, SLA |
+| [11_Schemas/](./11_Schemas/) | Diagrammes système, flux données, infra, user flows |
+| [12_Execution-System/](./12_Execution-System/) | Playbooks, runbooks, SOP, automations |
+| [13_Data-Intelligence/](./13_Data-Intelligence/) | Tracking, analytics, feedback loop, dérive, temps réel |
+| [14_Security-Resilience/](./14_Security-Resilience/) | Threat model, incidents, backup, secrets, antifragilité |
+| [99_Archives/](./99_Archives/) | Superseded, deprecated, abandoned-ideas |
 
-- [Vision](./01_Fondations/vision.md)
-- [Problème marché](./01_Fondations/probleme-marche.md)
-- [Solution](./01_Fondations/solution.md)
-- [Proposition de valeur](./01_Fondations/proposition-valeur.md)
-- [Positionnement](./01_Fondations/positionnement.md)
+---
 
-### [02_Marche-Cible](./02_Marche-Cible/)
-À qui on vend, pourquoi ils achètent.
+## Ordre de lecture
 
-- [ICP principal](./02_Marche-Cible/icp-principal.md)
-- [Segments secondaires](./02_Marche-Cible/segments-secondaires.md)
-- [Cas d'usage prioritaires](./02_Marche-Cible/cas-usage-prioritaires.md)
-- [Objections terrain](./02_Marche-Cible/objections-terrain.md)
+**Pour comprendre le projet :**
+01_Fondations → 02_Marche-Cible → 03_Produit → 05_Business
 
-### [03_Produit](./03_Produit/)
-Ce qu'on construit concrètement.
+**Pour piloter :**
+00_Pilotage → 08_Performance-System → 12_Execution-System
 
-- [MVP figé](./03_Produit/mvp-fige.md) ⭐ prioritaire
-- [Fonctionnalités hors MVP](./03_Produit/fonctionnalites-hors-mvp.md)
-- [User flows](./03_Produit/user-flows.md)
-- [Règles métier](./03_Produit/regles-metier.md)
-- [UX restaurateur](./03_Produit/ux-restaurateur.md)
+**Pour construire :**
+04_Technique → 10_Operations → 14_Security-Resilience
 
-### [04_Technique](./04_Technique/)
-Comment on le construit.
+**Pour vendre :**
+06_GoToMarket → 07_Branding → 12_Execution-System/playbooks/
 
-- [Architecture technique](./04_Technique/architecture-technique.md)
-- [Schéma base de données](./04_Technique/schema-base-de-donnees.md)
-- [Endpoints API](./04_Technique/endpoints-api.md)
-- [Sécurité & multi-tenant](./04_Technique/securite-multi-tenant.md)
-- [Roadmap technique](./04_Technique/roadmap-technique.md)
+---
 
-### [05_Offre-Business-Model](./05_Offre-Business-Model/)
-Comment on gagne de l'argent.
+## Liens système
 
-- [Offre SaaS](./05_Offre-Business-Model/offre-saas.md) ⭐ prioritaire
-- [Plans tarifaires](./05_Offre-Business-Model/plans-tarifaires.md)
-- [Setup fee](./05_Offre-Business-Model/setup-fee.md)
-- [Upsells](./05_Offre-Business-Model/upsells.md)
-- [Hypothèses unit economics](./05_Offre-Business-Model/hypotheses-unit-economics.md)
+| Système | Lien |
+|---|---|
+| Repo code | _À renseigner_ |
+| CI/CD | _À renseigner_ |
+| Monitoring | _À renseigner_ |
+| Logs | _À renseigner_ |
+| Analytics | _À renseigner_ |
+| Support | _À renseigner_ |
+| Design | _À renseigner_ |
 
-### [06_Acquisition-Vente](./06_Acquisition-Vente/)
-Comment on vend.
+---
 
-- [Go-to-market local](./06_Acquisition-Vente/go-to-market-local.md)
-- [Script de démo terrain](./06_Acquisition-Vente/script-demo-terrain.md)
-- [Argumentaire commercial](./06_Acquisition-Vente/argumentaire-commercial.md)
-- [Offre d'essai](./06_Acquisition-Vente/offre-essai.md)
-- [Parcours de signature](./06_Acquisition-Vente/parcours-signature.md)
+## Règles du système
 
-### [07_Branding](./07_Branding/)
-Identité et voix.
+- 1 document = 1 responsabilité principale
+- 1 décision importante = 1 trace explicite dans `00_Pilotage/decision-log.md`
+- Pas de vérité dupliquée — les résumés renvoient vers la source
+- Chaque document a un owner, un statut, une cadence de revue
+- Ce qui n'est plus vrai n'est pas supprimé — il est archivé dans `99_Archives/`
+- Toute métrique critique doit avoir un seuil (`08_Performance-System/thresholds.md`)
+- Tout seuil doit avoir un trigger (`08_Performance-System/triggers.md`)
+- Tout trigger doit avoir une action (`00_Pilotage/decision-to-action-map.md`)
 
-- [Naming shortlist](./07_Branding/naming-shortlist.md)
-- [Plateforme de marque](./07_Branding/plateforme-marque.md)
-- [Messages clés](./07_Branding/messages-cles.md)
-- [Ton de communication](./07_Branding/ton-communication.md)
+---
 
-### [08_Pilotage-KPI](./08_Pilotage-KPI/)
-Comment on mesure.
+## Statuts documentaires
 
-- [KPI produit](./08_Pilotage-KPI/kpi-produit.md)
-- [KPI business](./08_Pilotage-KPI/kpi-business.md)
-- [Plan de test terrain](./08_Pilotage-KPI/plan-test-terrain.md)
-- [Roadmap 30/60/90 jours](./08_Pilotage-KPI/roadmap-30-60-90.md) ⭐ prioritaire
-
-### [09_Legal-Conformite](./09_Legal-Conformite/)
-Ce qui est bloquant pour vendre.
-
-- [RGPD — traitement données](./09_Legal-Conformite/rgpd-traitement-donnees.md)
-- [CGU / CGV SaaS](./09_Legal-Conformite/cgu-cgv-saas.md)
-- [Contrat commerçant](./09_Legal-Conformite/contrat-commercant.md)
-- [Conformité Apple & Google Wallet](./09_Legal-Conformite/conformite-apple-google-wallet.md)
-
-### [10_Operations-Support](./10_Operations-Support/)
-Comment on livre et on opère.
-
-- [Runbook onboarding restaurant](./10_Operations-Support/runbook-onboarding-restaurant.md)
-- [Support client](./10_Operations-Support/support-client.md)
-- [SLA & disponibilité](./10_Operations-Support/sla-disponibilite.md)
-- [Procédure incident](./10_Operations-Support/procedure-incident.md)
-
-## Priorités immédiates (extrait plan.md)
-
-1. Figer le MVP → [03_Produit/mvp-fige.md](./03_Produit/mvp-fige.md)
-2. Choisir la cible d'entrée → [02_Marche-Cible/icp-principal.md](./02_Marche-Cible/icp-principal.md)
-3. Transformer le business model en offre vendable → [05_Offre-Business-Model/offre-saas.md](./05_Offre-Business-Model/offre-saas.md)
-4. Roadmap d'exécution → [08_Pilotage-KPI/roadmap-30-60-90.md](./08_Pilotage-KPI/roadmap-30-60-90.md)
-5. Supports de vente terrain → [06_Acquisition-Vente/](./06_Acquisition-Vente/)
-
-## Statuts
-
-- 🟢 Validé
-- 🟡 En cours de rédaction
-- 🟠 Brouillon
-- 🔴 À démarrer
-- ⭐ Priorité immédiate
+| Statut | Signification |
+|---|---|
+| `draft` | En cours de rédaction — ne pas utiliser comme référence |
+| `active` | Document de référence opérationnel |
+| `frozen` | Figé — ne change que sur décision explicite |
+| `deprecated` | Remplacé — voir `99_Archives/` |
