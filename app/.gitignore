@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+.next/
+dist/
+build/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Prisma
+apps/api/generated/
+
+# Certs (never commit)
+certs/
+
+# Misc
+.DS_Store
+*.pem

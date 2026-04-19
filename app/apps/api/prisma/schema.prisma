@@ -1,0 +1,268 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── CUSTOMERS ───────────────────────────────────────────────────────────────
+
+model Customer {
+  id         String   @id @default(uuid())
+  publicId   String   @unique @map("public_id")
+  firstName  String   @map("first_name")
+  phone      String
+  email      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  walletPasses    WalletPass[]
+  loyaltyAccounts LoyaltyAccount[]
+  loyaltyEvents   LoyaltyEvent[]
+  rewards         Reward[]
+
+  @@index([phone])
+  @@index([publicId])
+  @@map("customers")
+}
+
+model WalletPass {
+  id             String   @id @default(uuid())
+  customerId     String   @map("customer_id")
+  qrPayload      String   @map("qr_payload")
+  qrSignature    String   @map("qr_signature")
+  applePassId    String?  @map("apple_pass_id")
+  googleObjectId String?  @map("google_object_id")
+  status         PassStatus @default(ACTIVE)
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@map("wallet_passes")
+}
+
+// ─── MERCHANTS ───────────────────────────────────────────────────────────────
+
+model Merchant {
+  id        String         @id @default(uuid())
+  name      String
+  slug      String         @unique
+  status    MerchantStatus @default(TRIAL)
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  locations        MerchantLocation[]
+  staffUsers       StaffUser[]
+  loyaltyPrograms  LoyaltyProgram[]
+  loyaltyAccounts  LoyaltyAccount[]
+  loyaltyEvents    LoyaltyEvent[]
+  rewards          Reward[]
+  subscription     Subscription?
+
+  @@map("merchants")
+}
+
+model MerchantLocation {
+  id         String   @id @default(uuid())
+  merchantId String   @map("merchant_id")
+  name       String
+  address    String
+  city       String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  merchant      Merchant       @relation(fields: [merchantId], references: [id])
+  staffUsers    StaffUser[]
+  loyaltyEvents LoyaltyEvent[]
+
+  @@map("merchant_locations")
+}
+
+model StaffUser {
+  id           String          @id @default(uuid())
+  merchantId   String          @map("merchant_id")
+  locationId   String?         @map("location_id")
+  email        String          @unique
+  passwordHash String          @map("password_hash")
+  role         StaffRole       @default(STAFF)
+  status       StaffStatus     @default(INVITED)
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  merchant      Merchant          @relation(fields: [merchantId], references: [id])
+  location      MerchantLocation? @relation(fields: [locationId], references: [id])
+  loyaltyEvents LoyaltyEvent[]
+
+  @@map("staff_users")
+}
+
+// ─── LOYALTY ─────────────────────────────────────────────────────────────────
+
+model LoyaltyProgram {
+  id               String         @id @default(uuid())
+  merchantId       String         @map("merchant_id")
+  name             String
+  type             ProgramType    @default(STAMPS)
+  rulesJson        Json           @map("rules_json")
+  rewardPolicyJson Json           @map("reward_policy_json")
+  status           ProgramStatus  @default(DRAFT)
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  merchant        Merchant         @relation(fields: [merchantId], references: [id])
+  loyaltyAccounts LoyaltyAccount[]
+  loyaltyEvents   LoyaltyEvent[]
+  rewards         Reward[]
+
+  @@map("loyalty_programs")
+}
+
+model LoyaltyAccount {
+  id               String    @id @default(uuid())
+  merchantId       String    @map("merchant_id")
+  customerId       String    @map("customer_id")
+  loyaltyProgramId String    @map("loyalty_program_id")
+  pointsBalance    Int       @default(0) @map("points_balance")
+  stampsBalance    Int       @default(0) @map("stamps_balance")
+  totalEarned      Int       @default(0) @map("total_earned")
+  totalRedeemed    Int       @default(0) @map("total_redeemed")
+  lastActivityAt   DateTime? @map("last_activity_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  merchant       Merchant       @relation(fields: [merchantId], references: [id])
+  customer       Customer       @relation(fields: [customerId], references: [id])
+  loyaltyProgram LoyaltyProgram @relation(fields: [loyaltyProgramId], references: [id])
+
+  @@unique([merchantId, customerId, loyaltyProgramId])
+  @@map("loyalty_accounts")
+}
+
+model LoyaltyEvent {
+  id               String      @id @default(uuid())
+  merchantId       String      @map("merchant_id")
+  customerId       String      @map("customer_id")
+  loyaltyProgramId String      @map("loyalty_program_id")
+  locationId       String?     @map("location_id")
+  staffUserId      String?     @map("staff_user_id")
+  source           EventSource
+  eventType        EventType   @map("event_type")
+  pointsDelta      Int         @default(0) @map("points_delta")
+  stampsDelta      Int         @default(0) @map("stamps_delta")
+  metadataJson     Json        @default("{}") @map("metadata_json")
+  createdAt        DateTime    @default(now()) @map("created_at")
+
+  merchant       Merchant          @relation(fields: [merchantId], references: [id])
+  customer       Customer          @relation(fields: [customerId], references: [id])
+  loyaltyProgram LoyaltyProgram    @relation(fields: [loyaltyProgramId], references: [id])
+  location       MerchantLocation? @relation(fields: [locationId], references: [id])
+  staffUser      StaffUser?        @relation(fields: [staffUserId], references: [id])
+
+  @@index([customerId, merchantId, createdAt(sort: Desc)])
+  @@index([merchantId, createdAt(sort: Desc)])
+  @@map("loyalty_events")
+}
+
+model Reward {
+  id               String       @id @default(uuid())
+  merchantId       String       @map("merchant_id")
+  customerId       String       @map("customer_id")
+  loyaltyProgramId String       @map("loyalty_program_id")
+  status           RewardStatus @default(AVAILABLE)
+  rewardType       String       @map("reward_type")
+  rewardValue      String       @map("reward_value")
+  earnedAt         DateTime     @default(now()) @map("earned_at")
+  redeemedAt       DateTime?    @map("redeemed_at")
+  expiresAt        DateTime?    @map("expires_at")
+
+  merchant       Merchant       @relation(fields: [merchantId], references: [id])
+  customer       Customer       @relation(fields: [customerId], references: [id])
+  loyaltyProgram LoyaltyProgram @relation(fields: [loyaltyProgramId], references: [id])
+
+  @@index([customerId, merchantId, status])
+  @@map("rewards")
+}
+
+// ─── SUBSCRIPTIONS ───────────────────────────────────────────────────────────
+
+model Subscription {
+  id                 String             @id @default(uuid())
+  merchantId         String             @unique @map("merchant_id")
+  stripeCustomerId   String?            @map("stripe_customer_id")
+  stripeSubId        String?            @map("stripe_sub_id")
+  planCode           PlanCode           @map("plan_code")
+  status             SubscriptionStatus @default(TRIALING)
+  trialEndsAt        DateTime?          @map("trial_ends_at")
+  currentPeriodStart DateTime           @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  @@map("subscriptions")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum PassStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum MerchantStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+}
+
+enum StaffRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum StaffStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+enum ProgramType {
+  POINTS
+  STAMPS
+}
+
+enum ProgramStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+enum EventSource {
+  QR_SCAN
+  MANUAL_SEARCH_CREDIT
+  QUICK_ADD_RECENT_CUSTOMER
+  REWARD_REDEEM
+  ADMIN_ADJUSTMENT
+}
+
+enum EventType {
+  CREDIT
+  REDEEM
+  ADJUSTMENT
+}
+
+enum RewardStatus {
+  AVAILABLE
+  REDEEMED
+  EXPIRED
+}
+
+enum PlanCode {
+  SOLO_29
+  MULTI_79
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
