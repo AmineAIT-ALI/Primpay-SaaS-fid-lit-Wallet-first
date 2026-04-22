@@ -18,12 +18,15 @@ type ScanState = 'scanning' | 'processing' | 'success' | 'error';
 export default function QrTab() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
+  // Guard: prevents the callback from firing twice before stop() takes effect
+  const lockedRef = useRef(false);
   const [scanState, setScanState] = useState<ScanState>('scanning');
   const [errorMsg, setErrorMsg] = useState('');
   const [result, setResult] = useState<CreditResult | null>(null);
 
   const startScanner = useCallback(async () => {
     if (!videoRef.current) return;
+    lockedRef.current = false;
     setScanState('scanning');
     setErrorMsg('');
 
@@ -33,9 +36,12 @@ export default function QrTab() {
         undefined,
         videoRef.current,
         async (res, err) => {
-          if (!res) return;
-          if (err?.name === 'NotFoundException') return;
+          // Ignore non-results and fire-after-stop
+          if (!res || err?.name === 'NotFoundException') return;
+          if (lockedRef.current) return;
 
+          // Lock immediately — stops any subsequent callbacks
+          lockedRef.current = true;
           controlsRef.current?.stop();
           setScanState('processing');
 
@@ -52,6 +58,7 @@ export default function QrTab() {
           } catch (e: unknown) {
             setErrorMsg(e instanceof Error ? e.message : 'Erreur lors du crédit');
             setScanState('error');
+            lockedRef.current = false;
           }
         },
       );
@@ -64,6 +71,7 @@ export default function QrTab() {
   useEffect(() => {
     startScanner();
     return () => {
+      lockedRef.current = true;
       controlsRef.current?.stop();
     };
   }, [startScanner]);
@@ -88,7 +96,6 @@ export default function QrTab() {
         {/* Viewfinder */}
         <div className="relative w-64 h-64">
           <div className="absolute inset-0 rounded-2xl border-2 border-white/30" />
-          {/* Corner markers */}
           {[
             'top-0 left-0 border-t-4 border-l-4 rounded-tl-2xl',
             'top-0 right-0 border-t-4 border-r-4 rounded-tr-2xl',
@@ -123,7 +130,6 @@ export default function QrTab() {
         )}
       </div>
 
-      {/* Success modal */}
       {scanState === 'success' && result && (
         <CreditConfirmModal result={result} onClose={handleClose} />
       )}
