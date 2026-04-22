@@ -19,17 +19,29 @@ export class LoyaltyService {
   constructor(private prisma: PrismaService) {}
 
   async credit(merchantId: string, staffUserId: string, dto: CreditDto) {
-    // Validate QR payload when source is QR_SCAN
+    let resolvedCustomerId: string;
+
     if (dto.source === CreditSource.QR_SCAN) {
       if (!dto.qrPayload) throw new BadRequestException('qrPayload required for QR_SCAN');
-      await this.validateQrPayload(dto.qrPayload, dto.customerId);
+      const pass = await this.prisma.walletPass.findFirst({
+        where: { qrPayload: dto.qrPayload, status: 'ACTIVE' },
+      });
+      if (!pass) throw new BadRequestException('Invalid or expired QR code');
+      resolvedCustomerId = pass.customerId;
+    } else {
+      if (!dto.customerId) throw new BadRequestException('customerId required');
+      resolvedCustomerId = dto.customerId;
     }
 
+    const customerId = resolvedCustomerId;
+
     return this.prisma.$transaction(async (tx: PrismaClient) => {
-      const program = await tx.loyaltyProgram.findFirst({
-        where: { merchantId, status: 'ACTIVE' },
-      });
+      const [program, customer] = await Promise.all([
+        tx.loyaltyProgram.findFirst({ where: { merchantId, status: 'ACTIVE' } }),
+        tx.customer.findUnique({ where: { id: customerId }, select: { id: true, firstName: true } }),
+      ]);
       if (!program) throw new NotFoundException('No active loyalty program');
+      if (!customer) throw new NotFoundException('Customer not found');
 
       const rules = program.rulesJson as LoyaltyRules;
 
@@ -37,7 +49,7 @@ export class LoyaltyService {
         where: {
           merchantId_customerId_loyaltyProgramId: {
             merchantId,
-            customerId: dto.customerId,
+            customerId: customerId,
             loyaltyProgramId: program.id,
           },
         },
@@ -47,7 +59,7 @@ export class LoyaltyService {
         account = await tx.loyaltyAccount.create({
           data: {
             merchantId,
-            customerId: dto.customerId,
+            customerId: customerId,
             loyaltyProgramId: program.id,
           },
         });
@@ -61,7 +73,7 @@ export class LoyaltyService {
       await tx.loyaltyEvent.create({
         data: {
           merchantId,
-          customerId: dto.customerId,
+          customerId: customerId,
           loyaltyProgramId: program.id,
           locationId: dto.locationId ?? null,
           staffUserId,
@@ -88,6 +100,7 @@ export class LoyaltyService {
 
       // Check reward threshold
       let rewardUnlocked: boolean = false;
+      let rewardLabel: string | undefined;
       const threshold = isStamps
         ? rules.stampsRequired ?? 10
         : rules.pointsRequired ?? 100;
@@ -103,7 +116,7 @@ export class LoyaltyService {
         await tx.reward.create({
           data: {
             merchantId,
-            customerId: dto.customerId,
+            customerId: customerId,
             loyaltyProgramId: program.id,
             rewardType: policy.label ?? 'reward',
             rewardValue: policy.value ?? '',
@@ -115,7 +128,7 @@ export class LoyaltyService {
         await tx.loyaltyEvent.create({
           data: {
             merchantId,
-            customerId: dto.customerId,
+            customerId: customerId,
             loyaltyProgramId: program.id,
             locationId: dto.locationId ?? null,
             staffUserId,
@@ -137,12 +150,19 @@ export class LoyaltyService {
         });
 
         rewardUnlocked = true;
+        rewardLabel = policy.label;
       }
 
+      const finalBalance = isStamps
+        ? (rewardUnlocked ? newStamps - threshold : newStamps)
+        : (rewardUnlocked ? newPoints - threshold : newPoints);
+
       return {
-        account: updatedAccount,
+        customerId: customer.id,
+        customerName: customer.firstName,
+        stampsBalance: finalBalance,
         rewardUnlocked,
-        newBalance: isStamps ? updatedAccount.stampsBalance : updatedAccount.pointsBalance,
+        rewardLabel,
         threshold,
       };
     });
@@ -204,13 +224,6 @@ export class LoyaltyService {
     });
 
     return { account, availableRewards, recentEvents };
-  }
-
-  private async validateQrPayload(qrPayload: string, customerId: string) {
-    const pass = await this.prisma.walletPass.findFirst({
-      where: { qrPayload, customerId, status: 'ACTIVE' },
-    });
-    if (!pass) throw new BadRequestException('Invalid or expired QR code');
   }
 
   private rewardExpiresAt(): Date {

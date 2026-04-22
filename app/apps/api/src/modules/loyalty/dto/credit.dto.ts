@@ -1,4 +1,4 @@
-import { IsEnum, IsString, IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsString, IsOptional, IsUUID, ValidateIf } from 'class-validator';
 
 export enum CreditSource {
   QR_SCAN = 'QR_SCAN',
@@ -7,8 +7,10 @@ export enum CreditSource {
 }
 
 export class CreditDto {
+  // Required for MANUAL_SEARCH_CREDIT / QUICK_ADD — resolved automatically for QR_SCAN
   @IsUUID()
-  customerId: string;
+  @ValidateIf((o) => o.source !== CreditSource.QR_SCAN)
+  customerId?: string;
 
   @IsEnum(CreditSource)
   source: CreditSource;
@@ -17,8 +19,7 @@ export class CreditDto {
   @IsOptional()
   locationId?: string;
 
-  // QR scan — raw payload from camera scan
   @IsString()
-  @IsOptional()
+  @ValidateIf((o) => o.source === CreditSource.QR_SCAN)
   qrPayload?: string;
 }

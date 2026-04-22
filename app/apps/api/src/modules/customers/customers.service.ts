@@ -61,25 +61,34 @@ export class CustomersService {
   }
 
   async search(merchantId: string, dto: SearchCustomerDto) {
-    if (!dto.phone && !dto.publicId) return [];
+    const term = dto.q?.trim() ?? dto.phone ?? dto.publicId;
+    if (!term) return [];
 
     const customers = await this.prisma.customer.findMany({
       where: {
+        // IDOR fix: only return customers enrolled with this merchant
+        loyaltyAccounts: { some: { merchantId } },
         OR: [
-          dto.phone ? { phone: { contains: dto.phone } } : undefined,
-          dto.publicId ? { publicId: { equals: dto.publicId.toUpperCase() } } : undefined,
-        ].filter(Boolean) as object[],
+          { phone: { contains: term } },
+          { firstName: { contains: term, mode: 'insensitive' } },
+          { publicId: { equals: term.toUpperCase() } },
+        ],
       },
       take: 10,
       include: {
         loyaltyAccounts: {
           where: { merchantId },
-          include: { loyaltyProgram: true },
+          select: { stampsBalance: true, pointsBalance: true },
         },
       },
     });
 
-    return customers;
+    return customers.map((c) => ({
+      id: c.id,
+      firstName: c.firstName,
+      phone: c.phone,
+      stampsBalance: c.loyaltyAccounts[0]?.stampsBalance ?? 0,
+    }));
   }
 
   async findById(customerId: string, merchantId: string) {
@@ -121,6 +130,13 @@ export class CustomersService {
     return recentEvents
       .map((e) => e.customer)
       .filter(Boolean)
-      .slice(0, limit);
+      .slice(0, limit)
+      .map((c) => ({
+        id: c.id,
+        firstName: c.firstName,
+        phone: c.phone,
+        stampsBalance: c.loyaltyAccounts[0]?.stampsBalance ?? 0,
+        lastVisitAt: recentEvents.find((ev) => ev.customerId === c.id)?.createdAt,
+      }));
   }
 }
