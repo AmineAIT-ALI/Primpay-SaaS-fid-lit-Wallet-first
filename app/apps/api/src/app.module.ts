@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { MerchantsModule } from './modules/merchants/merchants.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { LoyaltyModule } from './modules/loyalty/loyalty.module';
+import { WalletModule } from './modules/wallet/wallet.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LoyaltyModule } from './modules/loyalty/loyalty.module';
     MerchantsModule,
     CustomersModule,
     LoyaltyModule,
+    WalletModule,
   ],
 })
 export class AppModule {}

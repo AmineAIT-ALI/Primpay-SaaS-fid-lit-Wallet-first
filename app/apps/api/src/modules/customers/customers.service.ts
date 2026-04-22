@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { SearchCustomerDto } from './dto/search-customer.dto';
@@ -11,6 +12,15 @@ function generatePublicId(firstName: string): string {
   const prefix = firstName.slice(0, 4).toUpperCase().padEnd(4, 'X');
   const suffix = Math.floor(1000 + Math.random() * 9000);
   return `${prefix}-${suffix}`;
+}
+
+function generateQrPayload(): string {
+  return `primpay:${crypto.randomUUID()}`;
+}
+
+function generateQrSignature(payload: string): string {
+  const secret = process.env.QR_SECRET ?? 'dev_secret';
+  return crypto.createHmac('sha256', secret).update(payload).digest('hex');
 }
 
 @Injectable()
@@ -56,6 +66,17 @@ export class CustomersService {
         },
       });
     }
+
+    // Auto-create WalletPass so customer can use QR scan immediately
+    const qrPayload = generateQrPayload();
+    await this.prisma.walletPass.create({
+      data: {
+        customerId: customer.id,
+        qrPayload,
+        qrSignature: generateQrSignature(qrPayload),
+        status: 'ACTIVE',
+      },
+    });
 
     return customer;
   }
